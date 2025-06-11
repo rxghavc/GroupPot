@@ -1,5 +1,5 @@
 import * as React from "react"
-import { GalleryVerticalEnd } from "lucide-react"
+import { GalleryVerticalEnd, Users, PlusCircle, LogIn, User, Layers } from "lucide-react"
 
 import {
   Sidebar,
@@ -21,52 +21,63 @@ const data = {
     {
       title: "Groups",
       url: "/groups",
+      icon: Users,
       items: [
         {
           title: "My Groups",
           url: "/groups",
+          icon: Users,
         },
         {
           title: "Join Group",
           url: "/groups/join",
+          icon: LogIn,
         },
         {
           title: "Create Group",
           url: "/groups/create",
+          icon: PlusCircle,
         },
       ],
     },
     {
       title: "Bets",
       url: "/bets",
+      icon: Layers,
       items: [
         {
           title: "All Bets",
           url: "/bets",
+          icon: Layers,
         },
       ],
     },
     {
       title: "Profile",
       url: "/profile",
+      icon: User,
       items: [
         {
           title: "My Profile",
           url: "/profile",
+          icon: User,
         },
       ],
     },
     {
       title: "Authentication",
       url: "#",
+      icon: LogIn,
       items: [
         {
           title: "Login",
           url: "/login",
+          icon: LogIn,
         },
         {
           title: "Signup",
           url: "/signup",
+          icon: PlusCircle,
         },
       ],
     },
@@ -99,16 +110,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             {data.navMain.map((item) => (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild>
-                  <a href={item.url} className="font-medium">
+                  <a href={item.url} className="font-medium flex items-center gap-2">
+                    {item.icon && <item.icon className="w-4 h-4" />}
                     {item.title}
                   </a>
                 </SidebarMenuButton>
                 {item.items?.length ? (
                   <SidebarMenuSub>
-                    {item.items.map((item) => (
-                      <SidebarMenuSubItem key={item.title}>
+                    {item.items.map((subitem) => (
+                      <SidebarMenuSubItem key={subitem.title}>
                         <SidebarMenuSubButton asChild>
-                          <a href={item.url}>{item.title}</a>
+                          <a href={subitem.url} className="flex items-center gap-2">
+                            {subitem.icon && <subitem.icon className="w-4 h-4" />}
+                            {subitem.title}
+                          </a>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     ))}
