@@ -7,12 +7,11 @@ export default function Home() {
       <div className="flex flex-col items-center gap-2">
         <FaUserFriends className="w-14 h-14 text-emerald-500 drop-shadow mb-2" />
         <h1 className="text-4xl font-extrabold tracking-tight text-primary drop-shadow-sm">
-          Welcome to FriendsStake
+          Welcome to <span className="text-emerald-500">FriendsStake</span>
         </h1>
       </div>
       <p className="text-lg text-muted-foreground max-w-xl">
-        <span className="font-semibold text-primary">FriendsStake</span> lets you
-        create private groups, place bets with friends, and split winnings
+        Within this app, create private groups, place bets with friends, and split winnings
         automatically.
         <br className="hidden sm:block" />
         Use the sidebar to navigate between your dashboard, groups, bets, and
