@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { usePathname, useRouter } from "next/navigation";
-import { ThemeToggle } from "@/components/theme-toggle"; // Import ThemeToggle
+import { ThemeToggle } from "@/components/ui/theme-toggle"; // Import ThemeToggle
 
 // import { useAuth } from "@/components/auth-context"; // Uncomment if you have an auth context
 // import { useClerk } from "@clerk/nextjs"; // Uncomment if using Clerk
