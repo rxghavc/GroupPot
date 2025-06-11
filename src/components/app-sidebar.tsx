@@ -1,5 +1,6 @@
 import * as React from "react"
-import { GalleryVerticalEnd, Users, PlusCircle, LogIn, User, Layers } from "lucide-react"
+import { GalleryVerticalEnd, Users, Layers, User } from "lucide-react"
+import { FaUserFriends } from "react-icons/fa";
 
 import {
   Sidebar,
@@ -9,9 +10,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
 
@@ -19,67 +17,24 @@ import {
 const data = {
   navMain: [
     {
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: GalleryVerticalEnd,
+    },
+    {
       title: "Groups",
       url: "/groups",
       icon: Users,
-      items: [
-        {
-          title: "My Groups",
-          url: "/groups",
-          icon: Users,
-        },
-        {
-          title: "Join Group",
-          url: "/groups/join",
-          icon: LogIn,
-        },
-        {
-          title: "Create Group",
-          url: "/groups/create",
-          icon: PlusCircle,
-        },
-      ],
     },
     {
       title: "Bets",
       url: "/bets",
       icon: Layers,
-      items: [
-        {
-          title: "All Bets",
-          url: "/bets",
-          icon: Layers,
-        },
-      ],
     },
     {
-      title: "Profile",
-      url: "/profile",
+      title: "Settings",
+      url: "/settings",
       icon: User,
-      items: [
-        {
-          title: "My Profile",
-          url: "/profile",
-          icon: User,
-        },
-      ],
-    },
-    {
-      title: "Authentication",
-      url: "#",
-      icon: LogIn,
-      items: [
-        {
-          title: "Login",
-          url: "/login",
-          icon: LogIn,
-        },
-        {
-          title: "Signup",
-          url: "/signup",
-          icon: PlusCircle,
-        },
-      ],
     },
   ],
 }
@@ -91,12 +46,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <a href="#">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <GalleryVerticalEnd className="size-4" />
+              <a href="/">
+                <div className="text-emerald-500 flex aspect-square size-8 items-center justify-center rounded-lg">
+                  <FaUserFriends className="size-8" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-medium">Documentation</span>
+                  <span className="font-medium">FriendsStake</span>
                   <span className="">v1.0.0</span>
                 </div>
               </a>
@@ -115,20 +70,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     {item.title}
                   </a>
                 </SidebarMenuButton>
-                {item.items?.length ? (
-                  <SidebarMenuSub>
-                    {item.items.map((subitem) => (
-                      <SidebarMenuSubItem key={subitem.title}>
-                        <SidebarMenuSubButton asChild>
-                          <a href={subitem.url} className="flex items-center gap-2">
-                            {subitem.icon && <subitem.icon className="w-4 h-4" />}
-                            {subitem.title}
-                          </a>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))}
-                  </SidebarMenuSub>
-                ) : null}
               </SidebarMenuItem>
             ))}
           </SidebarMenu>
