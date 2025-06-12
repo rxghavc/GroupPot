@@ -6,16 +6,10 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { usePathname, useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ui/theme-toggle"; // Import ThemeToggle
 
-// import { useAuth } from "@/components/auth-context"; // Uncomment if you have an auth context
-// import { useClerk } from "@clerk/nextjs"; // Uncomment if using Clerk
-
 export function SiteHeader() {
   const pathname = usePathname();
-  // const { isLoggedIn } = useAuth(); // Uncomment if you have an auth context
-  // const clerk = useClerk(); // Uncomment if using Clerk
   const router = useRouter();
 
-  // List of known top-level routes for breadcrumb/page name
   const knownRoutes = [
     "dashboard", "groups", "bets", "profile", "login", "signup", "users", ""
   ];
@@ -26,7 +20,6 @@ export function SiteHeader() {
       ? (pathname === "/" ? "Home" : pathParts.map(str => str.charAt(0).toUpperCase() + str.slice(1)).join(" / "))
       : "Not Found";
 
-  // Demo: always show not logged in (customize for your auth)
   const isLoggedIn = false;
 
   const handleLoginSignup = () => {
@@ -52,21 +45,7 @@ export function SiteHeader() {
               Login / Signup
             </Button>
           )}
-          {/*
-          {isLoggedIn && (
-            <Button
-              variant="ghost"
-              className="font-medium"
-              onClick={async () => {
-                await clerk.signOut();
-                router.push("/login");
-              }}
-            >
-              Logout
-            </Button>
-          )}
-          */}
-          <ThemeToggle /> {/* Render ThemeToggle here */}
+          <ThemeToggle />
         </div>
       </div>
     </header>
