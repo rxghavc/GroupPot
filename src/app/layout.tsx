@@ -4,6 +4,8 @@ import "./globals.css";
 import { AppSidebar } from "@/components/ui/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { SiteHeader } from "@/components/ui/site-header";
+import { ThemeProvider } from "@/components/ui/theme-provider";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -70,17 +72,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex min-h-screen`}
       >
-        <SidebarProvider>
-          <AppSidebar />
-          <div className="flex-1 flex flex-col min-h-screen">
-            <SiteHeader />
-            <main className="flex-1 p-6 sm:p-10">{children}</main>
-          </div>
-        </SidebarProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <SidebarProvider>
+              <AppSidebar />
+              <div className="flex-1 flex flex-col min-h-screen">
+                <SiteHeader />
+                <main className="flex-1 p-6 sm:p-10">{children}</main>
+              </div>
+            </SidebarProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

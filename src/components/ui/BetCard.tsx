@@ -1,0 +1,385 @@
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Bet, BetResult } from "@/lib/types";
+import { VoteForm } from "./VoteForm";
+import { 
+  Clock, 
+  Users, 
+  Trophy, 
+  PoundSterling,
+  CheckCircle,
+  XCircle,
+  Edit,
+  Save,
+  X
+} from "lucide-react";
+
+interface BetCardProps {
+  bet: Bet;
+  groupMinStake: number;
+  groupMaxStake: number;
+  isModerator: boolean;
+  onVote: (voteData: { optionId: string; stake: number }) => void;
+  onSettle: (winningOptionId: string) => void;
+  result?: BetResult;
+}
+
+export function BetCard({ 
+  bet, 
+  groupMinStake, 
+  groupMaxStake, 
+  isModerator, 
+  onVote, 
+  onSettle, 
+  result 
+}: BetCardProps) {
+  const [showVoteForm, setShowVoteForm] = useState(false);
+  const [showSettleForm, setShowSettleForm] = useState(false);
+  const [selectedWinningOption, setSelectedWinningOption] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({
+    title: bet.title,
+    description: bet.description,
+    deadline: new Date(bet.deadline).toISOString().slice(0, 16),
+    minStake: bet.minStake,
+    maxStake: bet.maxStake
+  });
+
+  const isExpired = new Date(bet.deadline) < new Date();
+  const canVote = bet.status === 'open' && !isExpired;
+  const canSettle = bet.status === 'closed' && isModerator;
+  const isSettled = bet.status === 'settled';
+
+  function getStatusColor() {
+    if (isSettled) return "bg-green-100 text-green-800";
+    if (isExpired || bet.status === 'closed') return "bg-yellow-100 text-yellow-800";
+    return "bg-blue-100 text-blue-800";
+  }
+
+  function getStatusText() {
+    if (isSettled) return "Settled";
+    if (isExpired || bet.status === 'closed') return "Closed";
+    return "Open";
+  }
+
+  function handleVote(voteData: { optionId: string; stake: number }) {
+    onVote(voteData);
+    setShowVoteForm(false);
+  }
+
+  function handleSettle() {
+    if (!selectedWinningOption) {
+      alert("Please select a winning option");
+      return;
+    }
+    onSettle(selectedWinningOption);
+    setShowSettleForm(false);
+    setSelectedWinningOption("");
+  }
+
+  function handleEdit() {
+    setIsEditing(true);
+  }
+
+  function handleSave() {
+    // Call API to update the bet
+    fetch(`/api/bets/${bet.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify(editData),
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.error) {
+        alert(data.error);
+      } else {
+        setIsEditing(false);
+        // Refresh the page to show updated data
+        window.location.reload();
+      }
+    })
+    .catch(error => {
+      console.error('Error updating bet:', error);
+      alert('Failed to update bet');
+    });
+  }
+
+  function handleCancelEdit() {
+    setIsEditing(false);
+    setEditData({
+      title: bet.title,
+      description: bet.description,
+      deadline: new Date(bet.deadline).toISOString().slice(0, 16),
+      minStake: bet.minStake,
+      maxStake: bet.maxStake
+    });
+  }
+
+  function getTotalVotes() {
+    return bet.options.reduce((total, option) => total + option.votes.length, 0);
+  }
+
+  function getTotalStakes() {
+    return bet.options.reduce((total, option) => 
+      total + option.votes.reduce((sum, vote) => sum + vote.stake, 0), 0
+    );
+  }
+
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            {isEditing ? (
+              <div className="space-y-2">
+                <Input
+                  value={editData.title}
+                  onChange={(e) => setEditData({...editData, title: e.target.value})}
+                  className="text-lg font-semibold"
+                />
+                <textarea
+                  value={editData.description}
+                  onChange={(e) => setEditData({...editData, description: e.target.value})}
+                  className="w-full text-sm text-muted-foreground border rounded px-2 py-1"
+                  rows={2}
+                />
+                <div className="flex gap-2">
+                  <Input
+                    type="datetime-local"
+                    value={editData.deadline}
+                    onChange={(e) => setEditData({...editData, deadline: e.target.value})}
+                    className="text-sm"
+                  />
+                  <Input
+                    type="number"
+                    value={editData.minStake}
+                    onChange={(e) => setEditData({...editData, minStake: Number(e.target.value)})}
+                    placeholder="Min Stake"
+                    className="text-sm"
+                  />
+                  <Input
+                    type="number"
+                    value={editData.maxStake}
+                    onChange={(e) => setEditData({...editData, maxStake: Number(e.target.value)})}
+                    placeholder="Max Stake"
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                <CardTitle className="text-lg">{bet.title}</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">{bet.description}</p>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge className={getStatusColor()}>
+              {getStatusText()}
+            </Badge>
+            {isModerator && bet.status === 'open' && !isEditing && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleEdit}
+                className="h-8 w-8 p-0"
+              >
+                <Edit className="w-4 h-4" />
+              </Button>
+            )}
+            {isEditing && (
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSave}
+                  className="h-8 w-8 p-0"
+                >
+                  <Save className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelEdit}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+          <div className="flex items-center gap-1">
+            <Clock className="w-4 h-4" />
+            <span>Deadline: {new Date(bet.deadline).toLocaleString()}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Users className="w-4 h-4" />
+            <span>{getTotalVotes()} votes</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <PoundSterling className="w-4 h-4" />
+            <span>£{getTotalStakes().toFixed(2)} total</span>
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {/* Options */}
+        <div className="space-y-2">
+          <h4 className="font-medium">Options:</h4>
+          {bet.options.map((option) => {
+            const voteCount = option.votes.length;
+            const totalStake = option.votes.reduce((sum, vote) => sum + vote.stake, 0);
+            const isWinning = result?.winningOptionId === option.id;
+            
+            return (
+              <div 
+                key={option.id} 
+                className={`p-3 border rounded-lg ${
+                  isWinning ? 'border-green-500 bg-green-50' : 'border-gray-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{option.text}</span>
+                    {isWinning && <Trophy className="w-4 h-4 text-green-600" />}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {voteCount} votes • £{totalStake.toFixed(2)}
+                  </div>
+                </div>
+                
+                {/* Voters List - Show if there are votes */}
+                {voteCount > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <details className="group">
+                      <summary className="cursor-pointer text-sm text-muted-foreground hover:text-gray-700 list-none">
+                        <span className="group-open:hidden">Show {voteCount} voter{voteCount !== 1 ? 's' : ''}</span>
+                        <span className="hidden group-open:inline">Hide voters</span>
+                      </summary>
+                      <div className="mt-2 space-y-1">
+                        {option.votes.map((vote, index) => (
+                          <div key={index} className="flex items-center justify-between text-xs bg-gray-50 px-2 py-1 rounded">
+                            <span className="font-medium">{vote.username || vote.userId}</span>
+                            <span className="text-muted-foreground">£{vote.stake.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          {canVote && (
+            <Button onClick={() => setShowVoteForm(true)}>
+              Place Vote
+            </Button>
+          )}
+          
+          {canSettle && (
+            <Button 
+              variant="outline" 
+              onClick={() => setShowSettleForm(true)}
+            >
+              Settle Bet
+            </Button>
+          )}
+        </div>
+
+        {/* Results */}
+        {result && (
+          <div className="border-t pt-4">
+            <h4 className="font-medium mb-2">Results:</h4>
+            <div className="space-y-2">
+              <div className="text-sm">
+                <span className="font-medium">Total Pool:</span> £{result.totalPool.toFixed(2)}
+              </div>
+              <div className="text-sm">
+                <span className="font-medium">Winners:</span> {result.winners.length}
+              </div>
+              <div className="text-sm">
+                <span className="font-medium">Losers:</span> {result.losers.length}
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+
+      {/* Vote Form Modal */}
+      {showVoteForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <VoteForm
+              betId={bet.id}
+              options={bet.options}
+              minStake={bet.minStake}
+              maxStake={bet.maxStake}
+              onSubmit={handleVote}
+              onCancel={() => setShowVoteForm(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Settle Form Modal */}
+      {showSettleForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Declare Winner</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Select Winning Option</label>
+                  <div className="space-y-2">
+                    {bet.options.map((option) => (
+                      <label key={option.id} className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="winningOption"
+                          value={option.id}
+                          checked={selectedWinningOption === option.id}
+                          onChange={(e) => setSelectedWinningOption(e.target.value)}
+                          className="text-primary"
+                        />
+                        <span className="text-sm">{option.text}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={handleSettle} className="flex-1">
+                    Settle Bet
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowSettleForm(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
