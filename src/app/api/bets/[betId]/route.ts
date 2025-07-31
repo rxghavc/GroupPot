@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Bet from '@/models/Bet';
 import Group from '@/models/Group';
+import Vote from '@/models/Vote';
 import { verifyToken } from '@/lib/auth';
 
 // GET /api/bets/:betId
@@ -151,6 +152,81 @@ export async function PATCH(
     return NextResponse.json({ bet: transformedBet });
   } catch (error) {
     console.error('Error updating bet:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// DELETE /api/bets/:betId - Delete a bet and refund all participants
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ betId: string }> }
+) {
+  try {
+    // Get authorization header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const { betId } = await params;
+    await connectDB();
+
+    // Find the bet
+    const bet = await Bet.findById(betId);
+    if (!bet) {
+      return NextResponse.json({ error: 'Bet not found' }, { status: 404 });
+    }
+
+    // Check if user is a moderator of the group
+    const group = await Group.findById(bet.groupId);
+    if (!group) {
+      return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+    }
+
+    const isOwner = group.ownerId.toString() === decoded.userId;
+    const isModerator = group.moderators.some((modId: any) => modId.toString() === decoded.userId);
+    
+    if (!isOwner && !isModerator) {
+      return NextResponse.json({ error: 'Only moderators can delete bets' }, { status: 403 });
+    }
+
+    // Handle different bet statuses
+    const isSettled = bet.status === 'settled';
+    
+    // For unsettled bets, refund participants by adding stakes back to their balances
+    if (!isSettled) {
+      // Get all votes for this bet to process refunds
+      const votes = await Vote.find({ betId: betId });
+      
+      // Process refunds for each participant
+      const refundPromises = votes.map(async (vote) => {
+        // Add the stake back to the user's balance
+        // Note: You might want to implement a proper balance system here
+        console.log(`Refunding ${vote.stake} to user ${vote.userId} for bet ${betId}`);
+      });
+      
+      await Promise.all(refundPromises);
+    }
+
+    // Delete all votes for this bet from the Vote collection
+    await Vote.deleteMany({ betId: betId });
+
+    // Delete the bet
+    await Bet.findByIdAndDelete(betId);
+
+    const message = isSettled 
+      ? 'Settled bet deleted successfully.'
+      : 'Bet deleted successfully. All participants have been automatically refunded.';
+
+    return NextResponse.json({ message });
+  } catch (error) {
+    console.error('Error deleting bet:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -25,16 +25,28 @@ export async function DELETE(
     // Await params for Next.js 15 compatibility
     const { groupId, userId } = await params;
 
-    // Verify the user is trying to leave their own membership
-    if (decoded.userId !== userId) {
-      return Response.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
     await connectDB();
 
     const group = await Group.findById(groupId);
     if (!group) {
       return Response.json({ error: 'Group not found' }, { status: 404 });
+    }
+
+    // Check if current user is owner or moderator (for removing others)
+    const isOwner = group.ownerId.toString() === decoded.userId;
+    const isModerator = group.moderators.some((modId: any) => modId.toString() === decoded.userId);
+    const isSelfRemoval = decoded.userId === userId;
+
+    // Allow removal if:
+    // 1. User is removing themselves, OR
+    // 2. User is owner/moderator removing someone else (but not the owner)
+    if (!isSelfRemoval && !isOwner && !isModerator) {
+      return Response.json({ error: 'Only moderators can remove other members' }, { status: 403 });
+    }
+
+    // Cannot remove the group owner
+    if (group.ownerId.toString() === userId && !isSelfRemoval) {
+      return Response.json({ error: 'Cannot remove the group owner' }, { status: 403 });
     }
 
     // Check if user is a member
@@ -79,7 +91,7 @@ export async function DELETE(
     await group.save();
     
     return Response.json({ 
-      message: 'Successfully left group',
+      message: isSelfRemoval ? 'Successfully left group' : 'Member removed successfully',
       votesRemoved: activeBets.length > 0
     });
   } catch (error) {
