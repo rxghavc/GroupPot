@@ -4,7 +4,7 @@ import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Plus, Users, PoundSterling, Eye, Copy, Check } from "lucide-react";
+import { Plus, Users, PoundSterling, Eye, Copy, Check, Trophy, ChevronLeft, ChevronRight } from "lucide-react";
 import { Group, Bet, BetResult } from "@/lib/types";
 import { BetCard } from "@/components/ui/BetCard";
 import { BetForm } from "@/components/ui/BetForm";
@@ -29,6 +29,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import useSWR, { mutate } from 'swr';
 
 export default function GroupDetailsPage({ params }: { params: Promise<{ groupId: string }> }) {
@@ -51,6 +58,11 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   const [isFetching, setIsFetching] = useState(false);
   const [showResultsDialog, setShowResultsDialog] = useState(false);
   const [selectedBetResult, setSelectedBetResult] = useState<{ bet: Bet; result: BetResult } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [pendingDeleteBet, setPendingDeleteBet] = useState<Bet | null>(null);
 
   // Auto-refresh functionality
   const {
@@ -363,6 +375,142 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
     }
   };
 
+  // Pagination helpers
+  const totalBets = bets.length;
+  const totalPages = Math.ceil(totalBets / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const currentBets = bets.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (newPageSize: string) => {
+    setPageSize(parseInt(newPageSize));
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
+
+  // Handle member removal
+  const handleRemoveMember = async (memberId: string) => {
+    if (!group || removingMemberId) return;
+    
+    setRemovingMemberId(memberId);
+    try {
+      const response = await fetch(`/api/groups/${groupId}/members/${memberId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        // Refresh group data to update member list
+        await fetchGroupData();
+        showAlert('Member removed successfully!', 'success');
+      } else {
+        const error = await response.json();
+        showAlert(error.error || 'Failed to remove member');
+      }
+    } catch (error) {
+      console.error('Error removing member:', error);
+      showAlert('Failed to remove member');
+    } finally {
+      setRemovingMemberId(null);
+    }
+  };
+
+  // Handle moderator promotion/demotion
+  const handleToggleModerator = async (memberId: string, isCurrentlyModerator: boolean) => {
+    if (!group) return;
+    
+    try {
+      const response = await fetch(`/api/groups/${groupId}/moderators`, {
+        method: isCurrentlyModerator ? 'DELETE' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId: memberId }),
+      });
+
+      if (response.ok) {
+        // Refresh group data to update moderator list
+        await fetchGroupData();
+        showAlert(
+          `Member ${isCurrentlyModerator ? 'demoted from' : 'promoted to'} moderator!`, 
+          'success'
+        );
+      } else {
+        const error = await response.json();
+        showAlert(error.error || 'Failed to update moderator status');
+      }
+    } catch (error) {
+      console.error('Error updating moderator status:', error);
+      showAlert('Failed to update moderator status');
+    }
+  };
+
+  // Handle force closing bet early
+  const handleForceCloseBet = async (betId: string) => {
+    try {
+      const response = await fetch(`/api/bets/${betId}/close`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        await fetchGroupData();
+        showAlert('Bet closed successfully!', 'success');
+      } else {
+        const error = await response.json();
+        showAlert(error.error || 'Failed to close bet');
+      }
+    } catch (error) {
+      console.error('Error closing bet:', error);
+      showAlert('Failed to close bet');
+    }
+  };
+
+  // Handle bet deletion
+  const handleDeleteBet = async (betId: string) => {
+    const bet = bets.find(b => b.id === betId);
+    if (!bet) return;
+    
+    setPendingDeleteBet(bet);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirmed = async () => {
+    if (!pendingDeleteBet) return;
+    
+    setDeleteDialogOpen(false);
+    
+    try {
+      const response = await fetch(`/api/bets/${pendingDeleteBet.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        await fetchGroupData();
+        showAlert('Bet deleted successfully!', 'success');
+      } else {
+        const error = await response.json();
+        showAlert(error.error || 'Failed to delete bet');
+      }
+    } catch (error) {
+      console.error('Error deleting bet:', error);
+      showAlert('Failed to delete bet');
+    } finally {
+      setPendingDeleteBet(null);
+    }
+  };
+
   // Show loading state while auth is loading
   if (authLoading) {
     return (
@@ -536,31 +684,74 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
 
       {/* View Members Dialog */}
       <Dialog open={showMembers} onOpenChange={handleCloseMembers}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Group Members</DialogTitle>
+            <DialogTitle>Group Members ({group.members.length})</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            {group.members.map((member: any) => (
-              <div key={member._id || member.id} className="flex items-center justify-between p-2 border rounded">
-                <span className="font-medium">{member.username}</span>
-                <span className="text-sm text-muted-foreground">{member.email}</span>
-              </div>
-            ))}
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {group.members.map((member: any) => {
+              const isOwner = group.ownerId === member._id || group.ownerId === member.id;
+              const isMod = group.moderators.includes(member._id || member.id);
+              const canManage = isModerator && !isOwner && (member._id || member.id) !== user?.id;
+              
+              return (
+                <div key={member._id || member.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{member.username}</span>
+                        {isOwner && (
+                          <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                            Owner
+                          </span>
+                        )}
+                        {isMod && !isOwner && (
+                          <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                            Moderator
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-sm text-muted-foreground">{member.email}</span>
+                    </div>
+                  </div>
+                  
+                  {canManage && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleModerator(member._id || member.id, isMod)}
+                        className="text-xs"
+                      >
+                        {isMod ? 'Demote' : 'Promote'}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleRemoveMember(member._id || member.id)}
+                        disabled={removingMemberId === (member._id || member.id)}
+                        className="text-xs"
+                      >
+                        {removingMemberId === (member._id || member.id) ? 'Removing...' : 'Remove'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Create Bet Dialog */}
-      {showCreateBet && (
-        <BetForm
-          groupId={group.id}
-          groupMinStake={group.minStake}
-          groupMaxStake={group.maxStake}
-          onSubmit={handleCreateBet}
-          onCancel={handleCloseCreateBet}
-        />
-      )}
+      <BetForm
+        groupId={group.id}
+        groupMinStake={group.minStake}
+        groupMaxStake={group.maxStake}
+        open={showCreateBet}
+        onSubmit={handleCreateBet}
+        onCancel={handleCloseCreateBet}
+      />
 
       {/* Bets Section */}
       <div className="space-y-4">
@@ -578,14 +769,37 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
               </Card>
             ))}
           </div>
-        ) : bets.filter(bet => bet.status === 'open').length === 0 ? (
+        ) : bets.filter(bet => bet.status === 'open' && new Date(bet.deadline) >= new Date()).length === 0 ? (
           <Card>
-            <CardContent className="pt-6">
-              <p className="text-center text-muted-foreground">No active bets</p>
+            <CardContent className="pt-12 pb-12 text-center">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                  <Trophy className="w-8 h-8 text-gray-400" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-gray-900">No Active Bets</h3>
+                  <p className="text-muted-foreground max-w-md">
+                    There are currently no active bets in this group. 
+                    {isModerator 
+                      ? " Create the first bet to get everyone started!" 
+                      : " Check back later or ask a moderator to create one!"
+                    }
+                  </p>
+                </div>
+                {isModerator && (
+                  <Button 
+                    onClick={handleOpenCreateBet}
+                    className="mt-4 flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Create First Bet
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         ) : (
-          bets.filter(bet => bet.status === 'open').map((bet) => (
+          bets.filter(bet => bet.status === 'open' && new Date(bet.deadline) >= new Date()).map((bet) => (
             <BetCard
               key={bet.id}
               bet={bet}
@@ -605,95 +819,211 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
 
       {/* Bets Table Section */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">All Bets</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">All Bets</h2>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Show</span>
+            <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+              <SelectTrigger className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground">per page</span>
+          </div>
+        </div>
         <Card>
           <CardContent className="pt-6">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 font-medium">Title</th>
-                    <th className="text-left py-2 font-medium">Status</th>
-                    <th className="text-left py-2 font-medium">Deadline</th>
-                    <th className="text-left py-2 font-medium">Total Votes</th>
-                    <th className="text-left py-2 font-medium">Total Pool</th>
-                    <th className="text-left py-2 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bets.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="text-center py-4 text-muted-foreground">
-                        No bets found
-                      </td>
-                    </tr>
-                  ) : (
-                    bets.map((bet) => {
-                      const totalVotes = bet.options.reduce((total, option) => total + (option.votesCount || 0), 0);
-                      const totalPool = bet.options.reduce((total, option) => 
-                        total + (option.totalStake || 0), 0
-                      );
-                      const isExpired = new Date(bet.deadline) < new Date();
-                      const canSettle = isModerator && (
-                        bet.status === 'closed' || 
-                        bet.status === 'pending' || 
-                        (bet.status === 'open' && isExpired)
-                      );
-
-                      return (
-                        <tr key={bet.id} className="border-b hover:bg-gray-50">
-                          <td className="py-2">
-                            <div>
-                              <div className="font-medium">{bet.title}</div>
-                              <div className="text-sm text-muted-foreground">{bet.description}</div>
-                            </div>
-                          </td>
-                          <td className="py-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              bet.status === 'settled' ? 'bg-green-100 text-green-800' :
-                              bet.status === 'closed' ? 'bg-yellow-100 text-yellow-800' :
-                              isExpired ? 'bg-red-100 text-red-800' :
-                              'bg-blue-100 text-blue-800'
-                            }`}>
-                              {bet.status === 'settled' ? 'Settled' :
-                               bet.status === 'closed' ? 'Closed' :
-                               isExpired ? 'Expired' : 'Active'}
-                            </span>
-                          </td>
-                          <td className="py-2 text-sm">
-                            {new Date(bet.deadline).toLocaleDateString('en-GB')}
-                          </td>
-                          <td className="py-2 text-sm">{totalVotes}</td>
-                          <td className="py-2 text-sm">£{totalPool.toFixed(2)}</td>
-                          <td className="py-2">
-                            <div className="flex items-center gap-2">
-                              {bet.status === 'settled' && results.get(bet.id) && (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => handleViewResults(bet)}
-                                >
-                                  View Results
-                                </Button>
-                              )}
-                              {isModerator && canSettle && bet.status !== 'settled' && (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => handleSettleConfirm(bet)}
-                                >
-                                  Settle
-                                </Button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
+            {totalBets === 0 ? (
+              <div className="pt-12 pb-12 text-center">
+                <div className="flex flex-col items-center space-y-4">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                    <PoundSterling className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold text-gray-900">No Betting History</h3>
+                    <p className="text-muted-foreground max-w-md">
+                      This group has no betting history yet. Once bets are created and completed, they'll appear here with full details and results.
+                      {isModerator 
+                        ? " Start by creating your first bet!" 
+                        : " Ask a moderator to create the first bet!"
+                      }
+                    </p>
+                  </div>
+                  {isModerator && (
+                    <Button 
+                      onClick={handleOpenCreateBet}
+                      className="mt-4 flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create First Bet
+                    </Button>
                   )}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 font-medium">Title</th>
+                        <th className="text-left py-2 font-medium">Status</th>
+                        <th className="text-left py-2 font-medium">Deadline</th>
+                        <th className="text-left py-2 font-medium">Total Votes</th>
+                        <th className="text-left py-2 font-medium">Total Pool</th>
+                        <th className="text-left py-2 font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentBets.map((bet) => {
+                        const totalVotes = bet.options.reduce((total, option) => total + (option.votesCount || 0), 0);
+                        const totalPool = bet.options.reduce((total, option) => 
+                          total + (option.totalStake || 0), 0
+                        );
+                        const isExpired = new Date(bet.deadline) < new Date();
+                        const canSettle = isModerator && (
+                          bet.status === 'closed' || 
+                          bet.status === 'pending' || 
+                          (bet.status === 'open' && isExpired)
+                        );
+
+                        return (
+                          <tr key={bet.id} className="border-b hover:bg-gray-50">
+                            <td className="py-2">
+                              <div>
+                                <div className="font-medium">{bet.title}</div>
+                                <div className="text-sm text-muted-foreground">{bet.description}</div>
+                              </div>
+                            </td>
+                            <td className="py-2">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                bet.status === 'settled' ? 'bg-green-100 text-green-800' :
+                                bet.status === 'closed' ? 'bg-yellow-100 text-yellow-800' :
+                                isExpired ? 'bg-red-100 text-red-800' :
+                                'bg-blue-100 text-blue-800'
+                              }`}>
+                                {bet.status === 'settled' ? 'Settled' :
+                                 bet.status === 'closed' ? 'Closed' :
+                                 isExpired ? 'Expired' : 'Active'}
+                              </span>
+                            </td>
+                            <td className="py-2 text-sm">
+                              {new Date(bet.deadline).toLocaleDateString('en-GB')}
+                            </td>
+                            <td className="py-2 text-sm">{totalVotes}</td>
+                            <td className="py-2 text-sm">£{totalPool.toFixed(2)}</td>
+                            <td className="py-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {bet.status === 'settled' && results.get(bet.id) && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleViewResults(bet)}
+                                  >
+                                    View Results
+                                  </Button>
+                                )}
+                                {isModerator && canSettle && bet.status !== 'settled' && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleSettleConfirm(bet)}
+                                  >
+                                    Settle
+                                  </Button>
+                                )}
+                                {isModerator && bet.status === 'open' && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleForceCloseBet(bet.id)}
+                                    className="text-orange-600 hover:text-orange-700"
+                                  >
+                                    Close Early
+                                  </Button>
+                                )}
+                                {isModerator && (
+                                  <Button 
+                                    variant="destructive" 
+                                    size="sm"
+                                    onClick={() => handleDeleteBet(bet.id)}
+                                  >
+                                    Delete
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Pagination Controls */}
+                {totalBets > 0 && (
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {startIndex + 1} to {Math.min(endIndex, totalBets)} of {totalBets} bets
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        Previous
+                      </Button>
+                      
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNumber;
+                          if (totalPages <= 5) {
+                            pageNumber = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNumber = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNumber = totalPages - 4 + i;
+                          } else {
+                            pageNumber = currentPage - 2 + i;
+                          }
+                          
+                          return (
+                            <Button
+                              key={pageNumber}
+                              variant={currentPage === pageNumber ? "default" : "outline"}
+                              size="sm"
+                              className="w-8 h-8 p-0"
+                              onClick={() => handlePageChange(pageNumber)}
+                            >
+                              {pageNumber}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -755,6 +1085,32 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
               disabled={!pendingSettleOption}
             >
               Settle Bet
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Bet Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Bet: {pendingDeleteBet?.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDeleteBet?.status === 'settled' 
+                ? 'Are you sure you want to delete this settled bet? This action cannot be undone and will permanently remove the bet from the group.'
+                : 'Are you sure you want to delete this bet? This action cannot be undone and will refund all participants.'
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setPendingDeleteBet(null);
+            }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirmed} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Bet
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
