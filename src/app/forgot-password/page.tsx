@@ -29,17 +29,17 @@ export default function ForgotPasswordPage() {
       return;
     }
 
-    const success = await forgotPassword(email);
-    if (success) {
+    const result = await forgotPassword(email);
+    if (result.success) {
       setSuccess(true);
     } else {
-      setError("Failed to send reset email. Please try again.");
+      setError(result.error || "Failed to send reset email. Please try again.");
     }
     setLoading(false);
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] overflow-hidden flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">Forgot password</CardTitle>
@@ -50,27 +50,37 @@ export default function ForgotPasswordPage() {
         <CardContent>
           {success ? (
             <div className="space-y-4">
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
+              <Alert className="border-green-200 bg-green-50 text-green-800">
+                <CheckCircle className="h-4 w-4 text-green-600" />
                 <AlertDescription>
+                  <strong>Reset link sent!</strong><br />
                   If an account with that email exists, we've sent you a password reset link. 
                   Please check your email and follow the instructions.
                 </AlertDescription>
               </Alert>
-              <div className="text-center space-y-2">
+              <div className="text-center space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Didn't receive the email? Check your spam folder or try again.
+                  Didn't receive the email? Check your spam folder.
                 </p>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSuccess(false);
-                    setEmail("");
-                  }}
-                  className="w-full"
-                >
-                  Try again
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSuccess(false);
+                      setEmail("");
+                    }}
+                    className="flex-1"
+                  >
+                    Try different email
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => window.location.href = 'mailto:'}
+                    className="flex-1"
+                  >
+                    Open Email App
+                  </Button>
+                </div>
               </div>
             </div>
           ) : (

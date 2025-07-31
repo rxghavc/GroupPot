@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
-import { PoundSterling, Trophy, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { PoundSterling, Trophy, XCircle, TrendingUp, TrendingDown, BarChart3, Users } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Line, LineChart } from "recharts";
 import useSWR from "swr";
 
 interface UserVote {
@@ -30,134 +33,408 @@ const fetcher = (url: string, token: string): Promise<UserBet[]> =>
 
 export default function UserBetsPage() {
   const { user, token, loading: authLoading } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="w-full flex flex-col items-center gap-8 py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!user || !token) {
+    return (
+      <div className="w-full flex flex-col items-center gap-8">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <Trophy className="h-6 w-6 text-primary" />
+            </div>
+            <CardTitle>Login Required</CardTitle>
+            <p className="text-muted-foreground text-sm mt-2">
+              Please log in to view your betting portfolio.
+            </p>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <Button asChild className="w-full">
+              <a href="/login">Login</a>
+            </Button>
+            <Button variant="outline" asChild className="w-full">
+              <a href="/signup">Create Account</a>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Now we can safely use the component that needs authentication
+  return <BetsContent user={user} token={token} />;
+}
+
+function BetsContent({ user, token }: { user: any; token: string }) {
+  const [selectedGroup, setSelectedGroup] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"overview" | "history">("overview");
+  
   const {
     data: bets = [],
     isLoading: loading,
     mutate,
   } = useSWR<UserBet[]>(
-    user && token ? [`/api/users/${user.id}/bets`, token] : null,
+    [`/api/users/${user.id}/bets`, token],
     ([url, token]: [string, string]) => fetcher(url, token)
   );
 
-  if (authLoading) {
-    return <div className="p-8 text-center">Loading...</div>;
-  }
-  if (!user || !token) {
-    return (
-      <div className="p-8 text-center">
-        <p className="mb-4 text-muted-foreground">Please log in to view your bets.</p>
-        <a href="/login" className="underline text-primary">Login</a>
-      </div>
-    );
-  }
-
   const activeBets = bets.filter((bet: UserBet) => bet.status !== "settled");
   const pastBets = bets.filter((bet: UserBet) => bet.status === "settled");
+  const uniqueGroups = [...new Set(bets.map(bet => bet.groupName))];
+
+  // Financial calculations
+  const totalActiveStake = activeBets.reduce((sum, bet) => 
+    sum + bet.userVotes.reduce((voteSum, vote) => voteSum + vote.stake, 0), 0
+  );
+  
+  const totalLifetimeStake = bets.reduce((sum, bet) => 
+    sum + bet.userVotes.reduce((voteSum, vote) => voteSum + vote.stake, 0), 0
+  );
+  
+  const totalWinnings = pastBets.reduce((sum, bet) => 
+    sum + (bet.result === "won" ? parseFloat(bet.payout) : 0), 0
+  );
+  
+  const totalLosses = pastBets.reduce((sum, bet) => 
+    sum + (bet.result === "lost" ? bet.userVotes.reduce((voteSum, vote) => voteSum + vote.stake, 0) : 0), 0
+  );
+
+  const totalPastStakes = pastBets.reduce((sum, bet) => 
+    sum + bet.userVotes.reduce((voteSum, vote) => voteSum + vote.stake, 0), 0
+  );
+  
+  const netProfit = totalWinnings - totalPastStakes;
+  const winRate = pastBets.length > 0 ? (pastBets.filter(bet => bet.result === "won").length / pastBets.length) * 100 : 0;
+
+  // Chart data preparation
+  const chartData = pastBets
+    .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
+    .map((bet, index) => {
+      const stake = bet.userVotes.reduce((sum, vote) => sum + vote.stake, 0);
+      const profit = bet.result === "won" ? parseFloat(bet.payout) - stake : -stake;
+      
+      return {
+        bet: bet.title.substring(0, 15) + "...",
+        profit: profit,
+        stake: stake,
+        payout: bet.result === "won" ? parseFloat(bet.payout) : 0,
+        date: new Date(bet.deadline).toLocaleDateString(),
+        group: bet.groupName
+      };
+    });
+
+  // Filter data based on selected group
+  const filteredBets = selectedGroup === "all" ? bets : bets.filter(bet => bet.groupName === selectedGroup);
+  const filteredActiveBets = selectedGroup === "all" ? activeBets : activeBets.filter(bet => bet.groupName === selectedGroup);
+  const filteredPastBets = selectedGroup === "all" ? pastBets : pastBets.filter(bet => bet.groupName === selectedGroup);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">My Bets</h1>
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold">My Betting Portfolio</h1>
+          <p className="text-muted-foreground mt-1">Track your bets, analyze performance, and manage your stakes</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Select group" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Groups</SelectItem>
+              {uniqueGroups.map(group => (
+                <SelectItem key={group} value={group}>{group}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex bg-muted rounded-lg p-1">
+            <Button
+              variant={viewMode === "overview" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("overview")}
+            >
+              Overview
+            </Button>
+            <Button
+              variant={viewMode === "history" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("history")}
+            >
+              History
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {loading ? (
-        <div className="text-center">Loading...</div>
+        <div className="text-center py-12">Loading your betting data...</div>
       ) : bets.length === 0 ? (
-        <div className="text-center text-muted-foreground">You haven't placed any bets yet.</div>
-      ) : (
+        <Card className="text-center py-12">
+          <CardContent className="pt-6">
+            <Trophy className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold mb-2">No Bets Yet</h3>
+            <p className="text-muted-foreground mb-4">Start betting to see your portfolio analytics here!</p>
+            <Button asChild>
+              <a href="/groups">Browse Groups</a>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : viewMode === "overview" ? (
         <>
-          <h2 className="text-xl font-semibold mb-4">Active Bets</h2>
-          {activeBets.length === 0 ? (
-            <div className="text-center text-muted-foreground mb-8">No active bets.</div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-8">
-              {activeBets.map((bet: UserBet) => (
-                <Card key={bet.betId} className="h-full">
-                  <CardHeader>
-                    <CardTitle className="text-lg font-semibold mb-1">{bet.title}</CardTitle>
-                    <div className="text-xs text-muted-foreground mb-1">Group: {bet.groupName}</div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge className={
-                        bet.status === "settled"
-                          ? "bg-green-100 text-green-800"
-                          : bet.status === "pending"
-                          ? "bg-orange-100 text-orange-800"
-                          : "bg-blue-100 text-blue-800"
-                      }>
-                        {bet.status.charAt(0).toUpperCase() + bet.status.slice(1)}
-                      </Badge>
-                      {bet.result === "won" && <Trophy className="w-4 h-4 text-green-600" />}
-                      {bet.result === "lost" && <XCircle className="w-4 h-4 text-red-600" />}
-                    </div>
-                    <div className="text-xs text-muted-foreground mb-1">Deadline: {new Date(bet.deadline).toLocaleDateString()}</div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-col gap-2">
-                      <div className="text-sm font-medium">Your Pick{bet.userVotes.length > 1 ? 's' : ''}:</div>
-                      <ul className="mb-2">
-                        {bet.userVotes.map((vote) => (
-                          <li key={vote.optionId} className="flex items-center gap-2 text-sm">
-                            <span className="font-semibold">{vote.optionText}</span>
-                            <span className="text-xs text-muted-foreground">(£{vote.stake})</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <div className="flex items-center gap-2 text-sm">
-                        <PoundSterling className="w-4 h-4" />
-                        <span>Total Stake: £{bet.userVotes.reduce((sum, v) => sum + v.stake, 0)}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>Result: {bet.result.charAt(0).toUpperCase() + bet.result.slice(1)}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+          {/* Financial Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Stakes</CardTitle>
+                <PoundSterling className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">£{totalActiveStake.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">
+                  {filteredActiveBets.length} active bet{filteredActiveBets.length !== 1 ? 's' : ''}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Net Profit/Loss</CardTitle>
+                {netProfit >= 0 ? (
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-red-600" />
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {netProfit >= 0 ? '+' : ''}£{netProfit.toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {((netProfit / totalLifetimeStake) * 100).toFixed(1)}% ROI
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
+                <Trophy className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{winRate.toFixed(1)}%</div>
+                <p className="text-xs text-muted-foreground">
+                  {pastBets.filter(bet => bet.result === "won").length} of {pastBets.length} won
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Staked</CardTitle>
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">£{totalLifetimeStake.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">
+                  Across {bets.length} bet{bets.length !== 1 ? 's' : ''}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Profit/Loss Chart */}
+          {chartData.length > 0 && (
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle>Betting Performance Over Time</CardTitle>
+                <p className="text-sm text-muted-foreground">Your profit/loss for each completed bet</p>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[400px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="bet" 
+                        angle={-45}
+                        textAnchor="end"
+                        height={100}
+                        fontSize={12}
+                      />
+                      <YAxis />
+                      <Tooltip 
+                        content={({ active, payload, label }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="bg-background border rounded-lg p-3 shadow-lg">
+                                <p className="font-medium">{data.bet}</p>
+                                <p className="text-sm text-muted-foreground">Group: {data.group}</p>
+                                <p className="text-sm text-muted-foreground">Date: {data.date}</p>
+                                <p className="text-sm">Stake: £{data.stake}</p>
+                                <p className="text-sm">Payout: £{data.payout}</p>
+                                <p className={`text-sm font-medium ${data.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  Profit: {data.profit >= 0 ? '+' : ''}£{data.profit.toFixed(2)}
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Bar 
+                        dataKey="profit" 
+                        fill="#3b82f6"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
           )}
-          <h2 className="text-xl font-semibold mb-4">Past Bets</h2>
-          {pastBets.length === 0 ? (
-            <div className="text-center text-muted-foreground">No past bets.</div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {pastBets.map((bet: UserBet) => (
-                <Card key={bet.betId} className="h-full">
-                  <CardHeader>
-                    <CardTitle className="text-lg font-semibold mb-1">{bet.title}</CardTitle>
-                    <div className="text-xs text-muted-foreground mb-1">Group: {bet.groupName}</div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge className="bg-green-100 text-green-800">Settled</Badge>
-                      {bet.result === "won" && <Trophy className="w-4 h-4 text-green-600" />}
-                      {bet.result === "lost" && <XCircle className="w-4 h-4 text-red-600" />}
-                    </div>
-                    <div className="text-xs text-muted-foreground mb-1">Deadline: {new Date(bet.deadline).toLocaleDateString()}</div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-col gap-2">
-                      <div className="text-sm font-medium">Your Pick{bet.userVotes.length > 1 ? 's' : ''}:</div>
-                      <ul className="mb-2">
-                        {bet.userVotes.map((vote) => (
-                          <li key={vote.optionId} className="flex items-center gap-2 text-sm">
-                            <span className="font-semibold">{vote.optionText}</span>
-                            <span className="text-xs text-muted-foreground">(£{vote.stake})</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <div className="flex items-center gap-2 text-sm">
-                        <PoundSterling className="w-4 h-4" />
-                        <span>Total Stake: £{bet.userVotes.reduce((sum, v) => sum + v.stake, 0)}</span>
+
+          {/* Active Bets Section */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+              <PoundSterling className="w-6 h-6" />
+              Active Bets
+            </h2>
+            {filteredActiveBets.length === 0 ? (
+              <Card className="text-center py-8">
+                <CardContent>
+                  <p className="text-muted-foreground">No active bets in {selectedGroup === "all" ? "any group" : selectedGroup}</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredActiveBets.map((bet: UserBet) => (
+                  <Card key={bet.betId} className="h-full">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-semibold mb-1">{bet.title}</CardTitle>
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                          {bet.groupName}
+                        </Badge>
+                        <Badge className="bg-orange-100 text-orange-800">
+                          Active
+                        </Badge>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Trophy className="w-4 h-4" />
-                        <span>Payout: £{bet.payout}</span>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm font-medium mb-1">Your Picks:</p>
+                          {bet.userVotes.map((vote) => (
+                            <div key={vote.optionId} className="flex justify-between items-center text-sm">
+                              <span>{vote.optionText}</span>
+                              <span className="font-semibold">£{vote.stake}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex justify-between items-center pt-2 border-t">
+                          <span className="text-sm font-medium">Total Stake:</span>
+                          <span className="font-bold">£{bet.userVotes.reduce((sum, v) => sum + v.stake, 0)}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Deadline: {new Date(bet.deadline).toLocaleDateString()}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>Result: {bet.result.charAt(0).toUpperCase() + bet.result.slice(1)}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         </>
+      ) : (
+        /* History View */
+        <div>
+          <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+            <Trophy className="w-6 h-6" />
+            Betting History
+          </h2>
+          {filteredPastBets.length === 0 ? (
+            <Card className="text-center py-8">
+              <CardContent>
+                <p className="text-muted-foreground">No betting history in {selectedGroup === "all" ? "any group" : selectedGroup}</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredPastBets.map((bet: UserBet) => (
+                <Card key={bet.betId} className="h-full">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold mb-1">{bet.title}</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                        {bet.groupName}
+                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-green-100 text-green-800">Settled</Badge>
+                        {bet.result === "won" && <Trophy className="w-4 h-4 text-green-600" />}
+                        {bet.result === "lost" && <XCircle className="w-4 h-4 text-red-600" />}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm font-medium mb-1">Your Picks:</p>
+                        {bet.userVotes.map((vote) => (
+                          <div key={vote.optionId} className="flex justify-between items-center text-sm">
+                            <span className={vote.result === "won" ? "text-green-600 font-medium" : ""}>
+                              {vote.optionText}
+                            </span>
+                            <span className="font-semibold">£{vote.stake}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="space-y-1 pt-2 border-t">
+                        <div className="flex justify-between items-center text-sm">
+                          <span>Total Stake:</span>
+                          <span className="font-semibold">£{bet.userVotes.reduce((sum, v) => sum + v.stake, 0)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span>Payout:</span>
+                          <span className="font-semibold">£{bet.payout}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm font-medium">
+                          <span>Net:</span>
+                          <span className={
+                            bet.result === "won" 
+                              ? "text-green-600" 
+                              : "text-red-600"
+                          }>
+                            {bet.result === "won" ? "+" : "-"}£{
+                              bet.result === "won" 
+                                ? (parseFloat(bet.payout) - bet.userVotes.reduce((sum, v) => sum + v.stake, 0)).toFixed(2)
+                                : bet.userVotes.reduce((sum, v) => sum + v.stake, 0).toFixed(2)
+                            }
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Settled: {new Date(bet.deadline).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

@@ -14,24 +14,26 @@ import {
 } from "@tanstack/react-table"
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 
-// Sample data for demonstration
-const rows = [
-	{ date: "2025-06-01", group: "NBA Finals", bet: "Lakers vs Celtics", wager: 50, payout: 0, status: "Open" },
-	{ date: "2025-05-20", group: "Euro Cup", bet: "France vs Spain", wager: 30, payout: 60, status: "Won" },
-	{ date: "2025-05-10", group: "Cricket World Cup", bet: "India vs Australia", wager: 40, payout: 0, status: "Lost" },
-	{ date: "2025-04-15", group: "Super Bowl", bet: "Chiefs vs 49ers", wager: 100, payout: 200, status: "Won" },
-	{ date: "2025-03-10", group: "March Madness", bet: "Duke vs UNC", wager: 25, payout: 0, status: "Lost" },
-	{ date: "2025-02-28", group: "Premier League", bet: "Man Utd vs Liverpool", wager: 60, payout: 120, status: "Won" },
-	{ date: "2025-01-15", group: "World Series", bet: "Yankees vs Dodgers", wager: 80, payout: 0, status: "Open" },
-	{ date: "2024-12-01", group: "UFC", bet: "McGregor vs Poirier", wager: 45, payout: 0, status: "Lost" },
-]
+interface BetRow {
+  date: string;
+  group: string;
+  bet: string;
+  wager: number;
+  payout: number;
+  status: string;
+}
 
-const columns: ColumnDef<typeof rows[0]>[] = [
+interface DashboardTableProps {
+  data?: BetRow[];
+  loading?: boolean;
+}
+
+const columns: ColumnDef<BetRow>[] = [
 	{ accessorKey: "date", header: "Date", cell: info => info.getValue() },
 	{ accessorKey: "group", header: "Group", cell: info => info.getValue() },
 	{ accessorKey: "bet", header: "Bet", cell: info => info.getValue() },
-	{ accessorKey: "wager", header: "Wager", cell: info => `$${info.getValue()}` },
-	{ accessorKey: "payout", header: "Payout", cell: info => info.row.original.payout ? `$${info.row.original.payout}` : "-" },
+	{ accessorKey: "wager", header: "Wager", cell: info => `£${info.getValue()}` },
+	{ accessorKey: "payout", header: "Payout", cell: info => info.row.original.payout ? `£${info.row.original.payout}` : "-" },
 	{
 		accessorKey: "status",
 		header: "Status",
@@ -48,12 +50,12 @@ const columns: ColumnDef<typeof rows[0]>[] = [
 
 const PAGE_SIZE = 4
 
-export function DashboardTable() {
+export function DashboardTable({ data = [], loading = false }: DashboardTableProps) {
 	const [globalFilter, setGlobalFilter] = React.useState("")
 	const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: PAGE_SIZE })
 
 	const table = useReactTable({
-		data: rows,
+		data,
 		columns,
 		state: {
 			globalFilter,
@@ -74,7 +76,7 @@ export function DashboardTable() {
 		manualPagination: false,
 		manualFiltering: false,
 		pageCount: Math.ceil(
-			rows.filter(row =>
+			data.filter((row: BetRow) =>
 				row.group.toLowerCase().includes(globalFilter.toLowerCase()) ||
 				row.bet.toLowerCase().includes(globalFilter.toLowerCase()) ||
 				row.status.toLowerCase().includes(globalFilter.toLowerCase())
@@ -110,10 +112,16 @@ export function DashboardTable() {
 					))}
 				</TableHeader>
 				<TableBody>
-					{table.getRowModel().rows.length === 0 ? (
+					{loading ? (
 						<TableRow>
 							<TableCell colSpan={columns.length} className="text-center text-muted-foreground">
-                No results found.
+                Loading your recent bets...
+              </TableCell>
+						</TableRow>
+					) : table.getRowModel().rows.length === 0 ? (
+						<TableRow>
+							<TableCell colSpan={columns.length} className="text-center text-muted-foreground">
+                {data.length === 0 ? "No bets found. Start betting to see your activity here!" : "No results found."}
               </TableCell>
 						</TableRow>
 					) : (
