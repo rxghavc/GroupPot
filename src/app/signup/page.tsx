@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
@@ -20,7 +21,20 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const { signup } = useAuth();
+  const { signup, user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get redirect URL from query params
+  const nextUrl = searchParams.get('next');
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      const redirectTo = nextUrl || '/dashboard';
+      router.push(redirectTo);
+    }
+  }, [user, router, nextUrl]);
 
   function validatePassword(password: string): { valid: boolean; message: string } {
     if (password.length < 6) {
@@ -63,22 +77,38 @@ export default function SignupPage() {
       return;
     }
 
-    const success = await signup(username, email, password);
-    if (success) {
+    const result = await signup(username, email, password, nextUrl || undefined);
+    if (result.success) {
       setSuccess(true);
       setLoading(false);
       // The redirect is handled by the AuthContext
     } else {
-      setError("Failed to create account. Email might already be in use.");
+      setError(result.error || "Failed to create account");
       setLoading(false);
     }
+  }
+
+  // Show loading if user is already authenticated and redirecting
+  if (user) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] overflow-hidden flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
+              <p>Already logged in. Redirecting...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   const passwordValidation = validatePassword(password);
   const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] overflow-hidden flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">Create account</CardTitle>
@@ -222,7 +252,10 @@ export default function SignupPage() {
 
             <div className="text-center text-sm">
               Already have an account?{" "}
-              <Link href="/login" className="text-primary hover:underline">
+              <Link 
+                href={nextUrl ? `/login?next=${encodeURIComponent(nextUrl)}` : "/login"} 
+                className="text-primary hover:underline"
+              >
                 Sign in
               </Link>
             </div>

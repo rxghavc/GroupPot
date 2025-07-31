@@ -12,11 +12,11 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  signup: (username: string, email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, redirectTo?: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (username: string, email: string, password: string, redirectTo?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  forgotPassword: (email: string) => Promise<boolean>;
-  resetPassword: (token: string, password: string) => Promise<boolean>;
+  forgotPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (token: string, password: string) => Promise<{ success: boolean; error?: string }>;
   loading: boolean;
 }
 
@@ -30,11 +30,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check for existing token on app load
+    console.log('AuthContext: Checking for existing token...');
     const savedToken = localStorage.getItem('authToken');
     if (savedToken) {
+      console.log('AuthContext: Found saved token, validating...');
       setToken(savedToken);
       fetchUserProfile(savedToken);
     } else {
+      console.log('AuthContext: No saved token found');
       setLoading(false);
     }
   }, []);
@@ -54,21 +57,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           username: userData.username,
           email: userData.email,
         });
+        setLoading(false);
       } else {
         // Token is invalid, clear it
+        console.log('Token validation failed, clearing auth state');
         localStorage.removeItem('authToken');
         setToken(null);
+        setUser(null);
+        setLoading(false);
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
       localStorage.removeItem('authToken');
       setToken(null);
-    } finally {
+      setUser(null);
       setLoading(false);
     }
   }
 
-  async function login(email: string, password: string): Promise<boolean> {
+  async function login(email: string, password: string, redirectTo?: string): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -88,25 +95,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         localStorage.setItem('authToken', data.token);
         
-        // Add a small delay to show success message before redirect
+        // Handle redirect after a delay to show success message
         setTimeout(() => {
-          const redirectTo = sessionStorage.getItem('redirectAfterAuth') || '/dashboard';
+          const finalRedirect = redirectTo || 
+                               sessionStorage.getItem('redirectAfterAuth') || 
+                               '/dashboard';
           sessionStorage.removeItem('redirectAfterAuth');
-          router.push(redirectTo);
-        }, 1500); // 1.5 second delay
+          router.push(finalRedirect);
+        }, 1500);
         
-        return true;
+        return { success: true };
       } else {
         const error = await response.json();
-        throw new Error(error.error || 'Login failed');
+        return { success: false, error: error.error || 'Invalid email or password' };
       }
     } catch (error) {
       console.error('Login error:', error);
-      return false;
+      return { success: false, error: 'Network error. Please try again.' };
     }
   }
 
-  async function signup(username: string, email: string, password: string): Promise<boolean> {
+  async function signup(username: string, email: string, password: string, redirectTo?: string): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
@@ -126,19 +135,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         localStorage.setItem('authToken', data.token);
         
-        // Add a small delay to show success message before redirect
+        // Handle redirect after a delay to show success message
         setTimeout(() => {
-          router.push('/dashboard');
-        }, 1500); // 1.5 second delay
+          const finalRedirect = redirectTo || '/dashboard';
+          router.push(finalRedirect);
+        }, 1500);
         
-        return true;
+        return { success: true };
       } else {
         const error = await response.json();
-        throw new Error(error.error || 'Signup failed');
+        return { success: false, error: error.error || 'Failed to create account' };
       }
     } catch (error) {
       console.error('Signup error:', error);
-      return false;
+      return { success: false, error: 'Network error. Please try again.' };
     }
   }
 
@@ -149,7 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push('/');
   }
 
-  async function forgotPassword(email: string): Promise<boolean> {
+  async function forgotPassword(email: string): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await fetch('/api/auth/forgot-password', {
         method: 'POST',
@@ -159,14 +169,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email }),
       });
 
-      return response.ok;
+      if (response.ok) {
+        return { success: true };
+      } else {
+        const error = await response.json();
+        return { success: false, error: error.error || 'Failed to send reset email' };
+      }
     } catch (error) {
       console.error('Forgot password error:', error);
-      return false;
+      return { success: false, error: 'Network error. Please try again.' };
     }
   }
 
-  async function resetPassword(token: string, password: string): Promise<boolean> {
+  async function resetPassword(token: string, password: string): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await fetch('/api/auth/reset-password', {
         method: 'POST',
@@ -176,10 +191,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ token, password }),
       });
 
-      return response.ok;
+      if (response.ok) {
+        return { success: true };
+      } else {
+        const error = await response.json();
+        return { success: false, error: error.error || 'Failed to reset password' };
+      }
     } catch (error) {
       console.error('Reset password error:', error);
-      return false;
+      return { success: false, error: 'Network error. Please try again.' };
     }
   }
 

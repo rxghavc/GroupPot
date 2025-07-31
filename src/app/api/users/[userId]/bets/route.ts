@@ -61,9 +61,56 @@ export async function GET(
       let result = 'pending';
       let payout = 0;
       if (bet.status === 'settled') {
-        if (userVotes.some((v: any) => v.result === 'won')) result = 'won';
-        else result = 'lost';
-        payout = userVotes.filter((v: any) => v.result === 'won').reduce((sum: number, v: any) => sum + v.stake * 1.5, 0); // Placeholder payout
+        if (userVotes.some((v: any) => v.result === 'won')) {
+          result = 'won';
+          
+          // Calculate actual payout using pool-based system
+          const allBetVotes = votes.filter((v: any) => v.betId.toString() === bet._id.toString());
+          
+          // Group all votes by option
+          const allVotesByOption = new Map();
+          bet.options.forEach((option: any) => {
+            allVotesByOption.set(option._id.toString(), []);
+          });
+          
+          allBetVotes.forEach((vote: any) => {
+            const optionId = vote.optionId.toString();
+            if (allVotesByOption.has(optionId)) {
+              allVotesByOption.get(optionId).push({
+                userId: vote.userId.toString(),
+                stake: vote.stake
+              });
+            }
+          });
+
+          const winningOption = bet.options[bet.winningOption!];
+          const winningVotes = allVotesByOption.get(winningOption._id.toString()) || [];
+          
+          // Get losing votes (all votes not on winning option)
+          const losingVotes = [];
+          bet.options.forEach((option: any, index: number) => {
+            if (index !== bet.winningOption) {
+              const optionVotes = allVotesByOption.get(option._id.toString()) || [];
+              losingVotes.push(...optionVotes);
+            }
+          });
+
+          // Calculate total losing stakes and winning stakes
+          const totalLosingStakes = losingVotes.reduce((sum, vote) => sum + vote.stake, 0);
+          const totalWinningStakes = winningVotes.reduce((sum, vote) => sum + vote.stake, 0);
+
+          // Calculate payout for this user's winning votes
+          payout = userVotes
+            .filter((v: any) => v.result === 'won')
+            .reduce((sum: number, userVote: any) => {
+              // Each winner gets their stake back plus a proportional share of losing stakes
+              const proportionalShare = totalWinningStakes > 0 ? 
+                (userVote.stake / totalWinningStakes) * totalLosingStakes : 0;
+              return sum + userVote.stake + proportionalShare;
+            }, 0);
+        } else {
+          result = 'lost';
+        }
       }
       return {
         betId: bet._id.toString(),

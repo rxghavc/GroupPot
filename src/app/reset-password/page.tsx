@@ -20,6 +20,8 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [token, setToken] = useState("");
+  const [tokenUser, setTokenUser] = useState<{ email: string; username?: string } | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(false);
   const { resetPassword } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -30,8 +32,33 @@ export default function ResetPasswordPage() {
       setError("Invalid reset link. Please request a new password reset.");
     } else {
       setToken(tokenParam);
+      // Fetch user info for this token
+      fetchTokenUser(tokenParam);
     }
   }, [searchParams]);
+
+  async function fetchTokenUser(resetToken: string) {
+    setTokenLoading(true);
+    try {
+      const response = await fetch('/api/auth/verify-reset-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token: resetToken }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTokenUser({ email: data.email, username: data.username });
+      } else {
+        setError("Invalid or expired reset link. Please request a new password reset.");
+      }
+    } catch (error) {
+      setError("Failed to verify reset link. Please try again.");
+    }
+    setTokenLoading(false);
+  }
 
   function validatePassword(password: string): { valid: boolean; message: string } {
     if (password.length < 6) {
@@ -73,11 +100,11 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    const success = await resetPassword(token, password);
-    if (success) {
+    const result = await resetPassword(token, password);
+    if (result.success) {
       setSuccess(true);
     } else {
-      setError("Invalid or expired reset token. Please request a new password reset.");
+      setError(result.error || "Invalid or expired reset token. Please request a new password reset.");
     }
     setLoading(false);
   }
@@ -87,7 +114,7 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] overflow-hidden flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <Alert variant="destructive">
@@ -112,28 +139,45 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] overflow-hidden flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Reset password</CardTitle>
-          <p className="text-center text-muted-foreground">
-            Enter your new password below
-          </p>
+          <CardTitle className="text-2xl font-bold text-center">Reset Password</CardTitle>
+          {tokenLoading ? (
+            <div className="text-center space-y-2">
+              <div className="h-4 w-48 bg-muted rounded animate-pulse mx-auto"></div>
+              <div className="h-3 w-32 bg-muted rounded animate-pulse mx-auto"></div>
+            </div>
+          ) : tokenUser ? (
+            <div className="text-center text-muted-foreground space-y-1">
+              <p className="font-medium">Reset password for:</p>
+              <p className="text-sm">
+                <span className="font-semibold text-foreground">{tokenUser.username}</span>
+                <span className="mx-2">•</span>
+                <span>{tokenUser.email}</span>
+              </p>
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground">
+              Enter your new password below
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           {success ? (
             <div className="space-y-4">
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
+              <Alert className="border-green-200 bg-green-50 text-green-800">
+                <CheckCircle className="h-4 w-4 text-green-600" />
                 <AlertDescription>
-                  Your password has been reset successfully! You can now log in with your new password.
+                  <strong>Password reset successfully!</strong><br />
+                  Your password has been reset. You can now log in with your new password.
                 </AlertDescription>
               </Alert>
               <Button
                 onClick={() => router.push('/login')}
                 className="w-full"
               >
-                Go to login
+                Continue to Login
               </Button>
             </div>
           ) : (
