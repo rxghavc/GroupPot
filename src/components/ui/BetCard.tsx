@@ -25,8 +25,9 @@ interface BetCardProps {
   groupMaxStake: number;
   isModerator: boolean;
   onVote: (voteData: { optionId: string; stake: number }) => void;
-  onSettle: (winningOptionId: string) => void;
+  onSettle: (bet: Bet) => void;
   result?: BetResult;
+  user?: { id: string };
 }
 
 export function BetCard({ 
@@ -36,7 +37,8 @@ export function BetCard({
   isModerator, 
   onVote, 
   onSettle, 
-  result 
+  result,
+  user
 }: BetCardProps) {
   const [showVoteForm, setShowVoteForm] = useState(false);
   const [showSettleForm, setShowSettleForm] = useState(false);
@@ -51,18 +53,36 @@ export function BetCard({
   });
 
   const isExpired = new Date(bet.deadline) < new Date();
+  const isPending = bet.status === 'pending';
   const canVote = bet.status === 'open' && !isExpired;
-  const canSettle = bet.status === 'closed' && isModerator;
+  const canSettle = (bet.status === 'closed' || isPending) && isModerator;
   const isSettled = bet.status === 'settled';
+
+  // In BetCard, find the user's current vote for this bet and shape as { optionId, stake }
+  const userVote = user
+    ? (() => {
+        for (const option of bet.options) {
+          if (option.votes) {
+            const found = option.votes.find(v => v.userId === user.id);
+            if (found) {
+              return { optionId: option.id, stake: found.stake };
+            }
+          }
+        }
+        return undefined;
+      })()
+    : undefined;
 
   function getStatusColor() {
     if (isSettled) return "bg-green-100 text-green-800";
+    if (isPending) return "bg-orange-100 text-orange-800";
     if (isExpired || bet.status === 'closed') return "bg-yellow-100 text-yellow-800";
     return "bg-blue-100 text-blue-800";
   }
 
   function getStatusText() {
     if (isSettled) return "Settled";
+    if (isPending) return "Pending";
     if (isExpired || bet.status === 'closed') return "Closed";
     return "Open";
   }
@@ -77,7 +97,7 @@ export function BetCard({
       alert("Please select a winning option");
       return;
     }
-    onSettle(selectedWinningOption);
+    onSettle(bet);
     setShowSettleForm(false);
     setSelectedWinningOption("");
   }
@@ -124,12 +144,12 @@ export function BetCard({
   }
 
   function getTotalVotes() {
-    return bet.options.reduce((total, option) => total + option.votes.length, 0);
+    return bet.options.reduce((total, option) => total + (option.votesCount || 0), 0);
   }
 
   function getTotalStakes() {
     return bet.options.reduce((total, option) => 
-      total + option.votes.reduce((sum, vote) => sum + vote.stake, 0), 0
+      total + (option.totalStake || 0), 0
     );
   }
 
@@ -239,15 +259,16 @@ export function BetCard({
         <div className="space-y-2">
           <h4 className="font-medium">Options:</h4>
           {bet.options.map((option) => {
-            const voteCount = option.votes.length;
-            const totalStake = option.votes.reduce((sum, vote) => sum + vote.stake, 0);
+            const voteCount = option.votesCount || 0;
+            const totalStake = option.totalStake || 0;
             const isWinning = result?.winningOptionId === option.id;
+            const userVoted = user && option.votes && option.votes.some(v => v.userId === user.id);
             
             return (
               <div 
                 key={option.id} 
                 className={`p-3 border rounded-lg ${
-                  isWinning ? 'border-green-500 bg-green-50' : 'border-gray-200'
+                  isWinning ? 'border-green-500 bg-green-50' : userVoted ? 'border-primary/10 bg-primary/10' : 'border-gray-200'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -332,6 +353,9 @@ export function BetCard({
               maxStake={bet.maxStake}
               onSubmit={handleVote}
               onCancel={() => setShowVoteForm(false)}
+              userVote={userVote}
+              canVote={canVote}
+              isExpired={isExpired}
             />
           </div>
         </div>

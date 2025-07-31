@@ -13,11 +13,14 @@ interface VoteFormProps {
   maxStake: number;
   onSubmit: (voteData: { optionId: string; stake: number }) => void;
   onCancel: () => void;
+  userVote?: { optionId: string; stake: number };
+  canVote?: boolean;
+  isExpired?: boolean;
 }
 
-export function VoteForm({ betId, options, minStake, maxStake, onSubmit, onCancel }: VoteFormProps) {
-  const [selectedOption, setSelectedOption] = useState("");
-  const [stake, setStake] = useState(minStake);
+export function VoteForm({ betId, options, minStake, maxStake, onSubmit, onCancel, userVote, canVote, isExpired }: VoteFormProps) {
+  const [selectedOption, setSelectedOption] = useState(userVote?.optionId || "");
+  const [stake, setStake] = useState(userVote?.stake ?? Math.max(1, minStake));
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,8 +30,11 @@ export function VoteForm({ betId, options, minStake, maxStake, onSubmit, onCance
       return;
     }
 
-    if (stake < minStake || stake > maxStake) {
-      alert(`Stake must be between £${minStake} and £${maxStake}`);
+    const effectiveMinStake = Math.max(1, minStake);
+    const effectiveMaxStake = Math.max(1, maxStake);
+
+    if (stake < effectiveMinStake || stake > effectiveMaxStake) {
+      alert(`Stake must be between £${effectiveMinStake} and £${effectiveMaxStake}`);
       return;
     }
 
@@ -44,6 +50,9 @@ export function VoteForm({ betId, options, minStake, maxStake, onSubmit, onCance
         <CardTitle>Place Your Vote</CardTitle>
       </CardHeader>
       <CardContent>
+        {userVote && canVote && !isExpired && (
+          <div className="text-xs text-muted-foreground mb-2">You can change your vote until the deadline.</div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">Select Option</label>
@@ -66,19 +75,19 @@ export function VoteForm({ betId, options, minStake, maxStake, onSubmit, onCance
 
           <div>
             <label className="block text-sm font-medium mb-1">
-              Your Stake (£{minStake} - £{maxStake})
+              Your Stake (£{Math.max(1, minStake)} - £{Math.max(1, maxStake)})
             </label>
             <Input
               type="number"
-              min={minStake}
-              max={maxStake}
+              min={Math.max(1, minStake)}
+              max={Math.max(1, maxStake)}
               step="0.01"
               value={stake}
               onChange={(e) => setStake(Number(e.target.value))}
               required
             />
             <p className="text-xs text-muted-foreground mt-1">
-              You can stake between £{minStake} and £{maxStake}
+              You can stake between £{Math.max(1, minStake)} and £{Math.max(1, maxStake)}
             </p>
           </div>
 

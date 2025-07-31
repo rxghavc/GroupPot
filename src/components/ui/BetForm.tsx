@@ -26,8 +26,8 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, onSubmit, onCan
   const [description, setDescription] = useState("");
   const [options, setOptions] = useState(["", ""]);
   const [deadline, setDeadline] = useState("");
-  const [minStake, setMinStake] = useState(groupMinStake);
-  const [maxStake, setMaxStake] = useState(groupMaxStake);
+  const [minStake, setMinStake] = useState(Math.max(1, groupMinStake));
+  const [maxStake, setMaxStake] = useState(Math.max(1, groupMaxStake));
 
   function addOption() {
     setOptions([...options, ""]);
@@ -60,6 +60,16 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, onSubmit, onCan
 
     if (new Date(deadline) <= new Date()) {
       alert("Deadline must be in the future");
+      return;
+    }
+
+    if (minStake < 1) {
+      alert("Minimum stake must be at least £1");
+      return;
+    }
+
+    if (maxStake < 1) {
+      alert("Maximum stake must be at least £1");
       return;
     }
 

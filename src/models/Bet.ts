@@ -53,7 +53,7 @@ const betSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['open', 'closed', 'settled'],
+    enum: ['open', 'closed', 'settled', 'pending'],
     default: 'open'
   },
   minStake: {

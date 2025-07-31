@@ -28,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import useSWR, { mutate } from 'swr';
 
 export default function GroupDetailsPage({ params }: { params: Promise<{ groupId: string }> }) {
   const router = useRouter();
@@ -45,6 +46,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   const [alertType, setAlertType] = useState<"error" | "success">("error");
   const [settleDialogOpen, setSettleDialogOpen] = useState(false);
   const [pendingSettleOption, setPendingSettleOption] = useState<string | null>(null);
+  const [pendingSettleBet, setPendingSettleBet] = useState<Bet | null>(null);
   const [isFetching, setIsFetching] = useState(false);
 
   // Auto-refresh functionality
@@ -203,8 +205,8 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setBets([...bets, data.bet]);
+        // Do not append the new bet; always refresh from backend
+        fetchGroupData();
         setShowCreateBet(false);
         resetUserActivity(); // Resume auto-refresh after successful creation
       } else {
@@ -221,7 +223,12 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
     try {
       // Find the bet that contains this option
       const bet = bets.find(b => b.options.some(opt => opt.id === voteData.optionId));
-      if (!bet) return;
+      if (!bet) {
+        showAlert('Bet not found for this option');
+        return;
+      }
+
+      console.log('Placing vote:', { betId: bet.id, voteData });
 
       const response = await fetch(`/api/bets/${bet.id}/vote`, {
         method: 'POST',
@@ -233,10 +240,18 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
       });
 
       if (response.ok) {
+        const result = await response.json();
+        console.log('Vote successful:', result);
         // Refresh the bets to show updated vote counts
         fetchGroupData();
+        // Also refresh the user's bets page
+        if (user && token) {
+          mutate([`/api/users/${user.id}/bets`, token]);
+        }
+        showAlert('Vote placed successfully!', 'success');
       } else {
         const error = await response.json();
+        console.error('Vote failed:', error);
         showAlert(error.error || 'Failed to place vote');
       }
     } catch (error) {
@@ -249,7 +264,12 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
     try {
       // Find the bet that contains this option
       const bet = bets.find(b => b.options.some(opt => opt.id === winningOptionId));
-      if (!bet) return;
+      if (!bet) {
+        showAlert('Bet not found for this option');
+        return;
+      }
+
+      console.log('Settling bet:', { betId: bet.id, winningOptionId });
 
       const response = await fetch(`/api/bets/${bet.id}/outcome`, {
         method: 'POST',
@@ -262,11 +282,14 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Settle successful:', data);
         setResults(prev => new Map(prev).set(bet.id, data.result));
         // Refresh the bets to show updated status
         fetchGroupData();
+        showAlert('Bet settled successfully!', 'success');
       } else {
         const error = await response.json();
+        console.error('Settle failed:', error);
         showAlert(error.error || 'Failed to settle bet');
       }
     } catch (error) {
@@ -296,17 +319,18 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   };
 
   // Handle settle confirmation
-  const handleSettleConfirm = (winningOptionId: string) => {
-    setPendingSettleOption(winningOptionId);
+  const handleSettleConfirm = (bet: Bet) => {
+    setPendingSettleBet(bet);
     setSettleDialogOpen(true);
   };
 
   const handleSettleConfirmed = async () => {
-    if (!pendingSettleOption) return;
+    if (!pendingSettleOption || !pendingSettleBet) return;
     
     setSettleDialogOpen(false);
     await handleSettle(pendingSettleOption);
     setPendingSettleOption(null);
+    setPendingSettleBet(null);
   };
 
   // Show loading state while auth is loading
@@ -524,14 +548,14 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
               </Card>
             ))}
           </div>
-        ) : bets.length === 0 ? (
+        ) : bets.filter(bet => bet.status === 'open' || bet.status === 'pending').length === 0 ? (
           <Card>
             <CardContent className="pt-6">
               <p className="text-center text-muted-foreground">No active bets</p>
             </CardContent>
           </Card>
         ) : (
-          bets.map((bet) => (
+          bets.filter(bet => bet.status === 'open' || bet.status === 'pending').map((bet) => (
             <BetCard
               key={bet.id}
               bet={bet}
@@ -541,6 +565,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
               onVote={handleVote}
               onSettle={handleSettleConfirm}
               result={results.get(bet.id)}
+              user={user}
             />
           ))
         )}
@@ -572,9 +597,9 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                     </tr>
                   ) : (
                     bets.map((bet) => {
-                      const totalVotes = bet.options.reduce((total, option) => total + option.votes.length, 0);
+                      const totalVotes = bet.options.reduce((total, option) => total + (option.votesCount || 0), 0);
                       const totalPool = bet.options.reduce((total, option) => 
-                        total + option.votes.reduce((sum, vote) => sum + vote.stake, 0), 0
+                        total + (option.totalStake || 0), 0
                       );
                       const isExpired = new Date(bet.deadline) < new Date();
                       const canSettle = bet.status === 'closed' && isModerator;
@@ -600,19 +625,17 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                             </span>
                           </td>
                           <td className="py-2 text-sm">
-                            {new Date(bet.deadline).toLocaleDateString()}
+                            {new Date(bet.deadline).toLocaleDateString('en-GB')}
                           </td>
                           <td className="py-2 text-sm">{totalVotes}</td>
                           <td className="py-2 text-sm">£{totalPool.toFixed(2)}</td>
                           {isModerator && (
                             <td className="py-2">
-                              {canSettle && (
+                              {(canSettle || bet.status === 'pending') && (
                                 <Button 
                                   variant="outline" 
                                   size="sm"
-                                  onClick={() => {
-                                    alert('Settle functionality is in the bet card above');
-                                  }}
+                                  onClick={() => handleSettleConfirm(bet)}
                                 >
                                   Settle
                                 </Button>
@@ -634,14 +657,41 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
       <AlertDialog open={settleDialogOpen} onOpenChange={setSettleDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Settle Bet</AlertDialogTitle>
+            <AlertDialogTitle>Settle Bet: {pendingSettleBet?.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to settle this bet? This action cannot be undone and will calculate payouts for all participants.
+              Select the winning option for this bet. This action cannot be undone and will calculate payouts for all participants.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {pendingSettleBet && (
+            <div className="my-4">
+              <label className="block text-sm font-medium mb-2">Select Winning Option:</label>
+              <div className="space-y-2">
+                {pendingSettleBet.options.map((option) => (
+                  <label key={option.id} className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="winningOption"
+                      value={option.id}
+                      checked={pendingSettleOption === option.id}
+                      onChange={(e) => setPendingSettleOption(e.target.value)}
+                      className="text-primary"
+                    />
+                    <span className="text-sm">{option.text}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSettleConfirmed} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogCancel onClick={() => {
+              setPendingSettleOption(null);
+              setPendingSettleBet(null);
+            }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleSettleConfirmed} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!pendingSettleOption}
+            >
               Settle Bet
             </AlertDialogAction>
           </AlertDialogFooter>

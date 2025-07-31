@@ -30,6 +30,8 @@ export interface BetOption {
     stake: number;
     timestamp: Date;
   }[];
+  votesCount?: number;
+  totalStake?: number;
 }
 
 export interface Vote {
@@ -48,7 +50,7 @@ export interface Bet {
   description: string;
   options: BetOption[];
   deadline: Date;
-  status: 'open' | 'closed' | 'settled';
+  status: 'open' | 'closed' | 'settled' | 'pending';
   outcome?: string; // Winning option ID
   minStake: number;
   maxStake: number;
