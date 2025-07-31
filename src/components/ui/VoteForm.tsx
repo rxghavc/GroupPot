@@ -82,8 +82,18 @@ export function VoteForm({ betId, options, minStake, maxStake, onSubmit, onCance
               min={Math.max(1, minStake)}
               max={Math.max(1, maxStake)}
               step="0.01"
-              value={stake}
-              onChange={(e) => setStake(Number(e.target.value))}
+              value={stake || ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === '') {
+                  setStake(0);
+                } else {
+                  const numValue = parseFloat(value);
+                  if (!isNaN(numValue)) {
+                    setStake(numValue);
+                  }
+                }
+              }}
               required
             />
             <p className="text-xs text-muted-foreground mt-1">

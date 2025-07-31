@@ -53,11 +53,13 @@ export async function GET(
       winningOptionText: winningOption.text,
       winners: winningVotes.map((vote: any) => ({
         userId: vote.userId.toString(),
+        username: vote.username,
         stake: vote.stake,
         payout: totalPool * (vote.stake / winningVotes.reduce((sum, v) => sum + v.stake, 0))
       })),
       losers: losingVotes.map((vote: any) => ({
         userId: vote.userId.toString(),
+        username: vote.username,
         stake: vote.stake,
         loss: vote.stake
       }))

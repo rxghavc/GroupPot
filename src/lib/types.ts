@@ -61,14 +61,17 @@ export interface Bet {
 export interface BetResult {
   betId: string;
   winningOptionId: string;
+  winningOptionText: string;
   totalPool: number;
   winners: {
     userId: string;
+    username: string;
     stake: number;
     payout: number;
   }[];
   losers: {
     userId: string;
+    username: string;
     stake: number;
   }[];
 } 

@@ -28,6 +28,8 @@ interface BetCardProps {
   onSettle: (bet: Bet) => void;
   result?: BetResult;
   user?: { id: string };
+  token?: string;
+  onBetUpdated?: (updatedBet: Bet) => void;
 }
 
 export function BetCard({ 
@@ -38,7 +40,9 @@ export function BetCard({
   onVote, 
   onSettle, 
   result,
-  user
+  user,
+  token,
+  onBetUpdated
 }: BetCardProps) {
   const [showVoteForm, setShowVoteForm] = useState(false);
   const [showSettleForm, setShowSettleForm] = useState(false);
@@ -107,28 +111,40 @@ export function BetCard({
   }
 
   function handleSave() {
+    if (!token) {
+      alert('Authentication token not available. Please refresh the page and try again.');
+      return;
+    }
+
     // Call API to update the bet
     fetch(`/api/bets/${bet.id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(editData),
     })
-    .then(response => response.json())
+    .then(async response => {
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      return data;
+    })
     .then(data => {
-      if (data.error) {
-        alert(data.error);
+      setIsEditing(false);
+      // Update local state instead of page refresh
+      if (onBetUpdated && data.bet) {
+        onBetUpdated(data.bet);
       } else {
-        setIsEditing(false);
-        // Refresh the page to show updated data
+        // Fallback to page refresh if callback not provided
         window.location.reload();
       }
     })
     .catch(error => {
       console.error('Error updating bet:', error);
-      alert('Failed to update bet');
+      alert(`Failed to update bet: ${error.message}`);
     });
   }
 
@@ -180,15 +196,35 @@ export function BetCard({
                   />
                   <Input
                     type="number"
-                    value={editData.minStake}
-                    onChange={(e) => setEditData({...editData, minStake: Number(e.target.value)})}
+                    value={editData.minStake || ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '') {
+                        setEditData({...editData, minStake: 0});
+                      } else {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue)) {
+                          setEditData({...editData, minStake: numValue});
+                        }
+                      }
+                    }}
                     placeholder="Min Stake"
                     className="text-sm"
                   />
                   <Input
                     type="number"
-                    value={editData.maxStake}
-                    onChange={(e) => setEditData({...editData, maxStake: Number(e.target.value)})}
+                    value={editData.maxStake || ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '') {
+                        setEditData({...editData, maxStake: 0});
+                      } else {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue)) {
+                          setEditData({...editData, maxStake: numValue});
+                        }
+                      }
+                    }}
                     placeholder="Max Stake"
                     className="text-sm"
                   />

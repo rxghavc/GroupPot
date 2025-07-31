@@ -169,8 +169,18 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, onSubmit, onCan
               <Input
                 type="number"
                 min={1}
-                value={minStake}
-                onChange={(e) => setMinStake(Number(e.target.value))}
+                value={minStake || ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    setMinStake(0);
+                  } else {
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue)) {
+                      setMinStake(numValue);
+                    }
+                  }
+                }}
                 required
               />
             </div>
@@ -179,8 +189,18 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, onSubmit, onCan
               <Input
                 type="number"
                 min={1}
-                value={maxStake}
-                onChange={(e) => setMaxStake(Number(e.target.value))}
+                value={maxStake || ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    setMaxStake(0);
+                  } else {
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue)) {
+                      setMaxStake(numValue);
+                    }
+                  }
+                }}
                 required
               />
             </div>

@@ -8,6 +8,7 @@ import { Plus, Users, PoundSterling, Eye, Copy, Check } from "lucide-react";
 import { Group, Bet, BetResult } from "@/lib/types";
 import { BetCard } from "@/components/ui/BetCard";
 import { BetForm } from "@/components/ui/BetForm";
+import { PayoutTable } from "@/components/ui/PayoutTable";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { AutoRefreshIndicator } from "@/components/ui/auto-refresh-indicator";
@@ -48,6 +49,8 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   const [pendingSettleOption, setPendingSettleOption] = useState<string | null>(null);
   const [pendingSettleBet, setPendingSettleBet] = useState<Bet | null>(null);
   const [isFetching, setIsFetching] = useState(false);
+  const [showResultsDialog, setShowResultsDialog] = useState(false);
+  const [selectedBetResult, setSelectedBetResult] = useState<{ bet: Bet; result: BetResult } | null>(null);
 
   // Auto-refresh functionality
   const {
@@ -111,6 +114,14 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
           groupData.group.ownerId === user?.id || 
           groupData.group.moderators.includes(user?.id)
         );
+        
+        // Debug logging
+        console.log('Moderator check:', {
+          userId: user?.id,
+          ownerId: groupData.group.ownerId,
+          moderators: groupData.group.moderators,
+          isModerator: groupData.group.ownerId === user?.id || groupData.group.moderators.includes(user?.id)
+        });
       } else if (groupResponse.status === 404) {
         // Group not found - might have been deleted
         router.push('/groups');
@@ -333,6 +344,25 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
     setPendingSettleBet(null);
   };
 
+  // Handle bet update from edit
+  const handleBetUpdated = (updatedBet: Bet) => {
+    setBets(prevBets => 
+      prevBets.map(bet => 
+        bet.id === updatedBet.id ? updatedBet : bet
+      )
+    );
+    showAlert('Bet updated successfully!', 'success');
+  };
+
+  // Handle viewing bet results
+  const handleViewResults = (bet: Bet) => {
+    const result = results.get(bet.id);
+    if (result) {
+      setSelectedBetResult({ bet, result });
+      setShowResultsDialog(true);
+    }
+  };
+
   // Show loading state while auth is loading
   if (authLoading) {
     return (
@@ -548,14 +578,14 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
               </Card>
             ))}
           </div>
-        ) : bets.filter(bet => bet.status === 'open' || bet.status === 'pending').length === 0 ? (
+        ) : bets.filter(bet => bet.status === 'open').length === 0 ? (
           <Card>
             <CardContent className="pt-6">
               <p className="text-center text-muted-foreground">No active bets</p>
             </CardContent>
           </Card>
         ) : (
-          bets.filter(bet => bet.status === 'open' || bet.status === 'pending').map((bet) => (
+          bets.filter(bet => bet.status === 'open').map((bet) => (
             <BetCard
               key={bet.id}
               bet={bet}
@@ -566,6 +596,8 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
               onSettle={handleSettleConfirm}
               result={results.get(bet.id)}
               user={user}
+              token={token}
+              onBetUpdated={handleBetUpdated}
             />
           ))
         )}
@@ -585,13 +617,13 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                     <th className="text-left py-2 font-medium">Deadline</th>
                     <th className="text-left py-2 font-medium">Total Votes</th>
                     <th className="text-left py-2 font-medium">Total Pool</th>
-                    {isModerator && <th className="text-left py-2 font-medium">Actions</th>}
+                    <th className="text-left py-2 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {bets.length === 0 ? (
                     <tr>
-                      <td colSpan={isModerator ? 6 : 5} className="text-center py-4 text-muted-foreground">
+                      <td colSpan={6} className="text-center py-4 text-muted-foreground">
                         No bets found
                       </td>
                     </tr>
@@ -602,7 +634,11 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                         total + (option.totalStake || 0), 0
                       );
                       const isExpired = new Date(bet.deadline) < new Date();
-                      const canSettle = bet.status === 'closed' && isModerator;
+                      const canSettle = isModerator && (
+                        bet.status === 'closed' || 
+                        bet.status === 'pending' || 
+                        (bet.status === 'open' && isExpired)
+                      );
 
                       return (
                         <tr key={bet.id} className="border-b hover:bg-gray-50">
@@ -629,9 +665,18 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                           </td>
                           <td className="py-2 text-sm">{totalVotes}</td>
                           <td className="py-2 text-sm">£{totalPool.toFixed(2)}</td>
-                          {isModerator && (
-                            <td className="py-2">
-                              {(canSettle || bet.status === 'pending') && (
+                          <td className="py-2">
+                            <div className="flex items-center gap-2">
+                              {bet.status === 'settled' && results.get(bet.id) && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleViewResults(bet)}
+                                >
+                                  View Results
+                                </Button>
+                              )}
+                              {isModerator && canSettle && bet.status !== 'settled' && (
                                 <Button 
                                   variant="outline" 
                                   size="sm"
@@ -640,8 +685,8 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                                   Settle
                                 </Button>
                               )}
-                            </td>
-                          )}
+                            </div>
+                          </td>
                         </tr>
                       );
                     })
@@ -652,6 +697,23 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
           </CardContent>
         </Card>
       </div>
+
+      {/* Bet Results Dialog */}
+      <Dialog open={showResultsDialog} onOpenChange={setShowResultsDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedBetResult?.bet.title} - Results
+            </DialogTitle>
+          </DialogHeader>
+          {selectedBetResult && (
+            <PayoutTable 
+              bet={selectedBetResult.bet} 
+              result={selectedBetResult.result} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Settle Confirmation Dialog */}
       <AlertDialog open={settleDialogOpen} onOpenChange={setSettleDialogOpen}>
