@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
 import Bet from '@/models/Bet';
+import Group from '@/models/Group';
+import Vote from '@/models/Vote';
 import { verifyToken } from '@/lib/auth';
 
 // GET /api/users/:userId/bets - Get bets user has participated in
@@ -23,62 +25,53 @@ export async function GET(
     }
 
     await connectDB();
-    
-    // Await params for Next.js 15 compatibility
     const { userId } = await params;
-
     const user = await User.findById(userId);
     if (!user) {
       return Response.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Get bets where user has voted
-    const betsWithVotes = await Bet.aggregate([
-      { $unwind: '$options' },
-      { $unwind: '$options.votes' },
-      { $match: { 'options.votes.userId': userId } },
-      { $group: { 
-        _id: '$_id', 
-        title: { $first: '$title' },
-        status: { $first: '$status' },
-        deadline: { $first: '$deadline' },
-        winningOption: { $first: '$winningOption' },
-        userVote: { 
-          $push: { 
-            optionId: '$options._id',
-            stake: '$options.votes.stake'
+    // Find all votes by this user
+    const votes = await Vote.find({ userId }).lean();
+    if (votes.length === 0) return Response.json([]);
+
+    // Group votes by betId
+    const betIds = [...new Set(votes.map((v: any) => v.betId.toString()))];
+    const bets = await Bet.find({ _id: { $in: betIds } }).lean();
+    const groupIds = [...new Set(bets.map((b: any) => b.groupId.toString()))];
+    const groups = await Group.find({ _id: { $in: groupIds } }).lean();
+    const groupMap = new Map(groups.map((g: any) => [g._id.toString(), g.name]));
+
+    // For each bet, collect the user's votes
+    const betParticipation = bets.map((bet: any) => {
+      const userVotes = votes.filter((v: any) => v.betId.toString() === bet._id.toString()).map((v: any) => ({
+        optionId: v.optionId.toString(),
+        optionText: (bet.options.find((opt: any) => opt._id.toString() === v.optionId.toString())?.text) || '',
+        stake: v.stake,
+        result: (() => {
+          if (bet.status === 'settled') {
+            const winningOptionIndex = bet.winningOption;
+            const winningOptionId = bet.options[winningOptionIndex]?._id?.toString();
+            if (v.optionId.toString() === winningOptionId) return 'won';
+            else return 'lost';
           }
-        }
-      }}
-    ]);
-
-    // Create detailed bet participation records
-    const betParticipation = betsWithVotes.map(bet => {
-      const userVote = bet.userVote[0]; // User can only vote once per bet
-      
+          return 'pending';
+        })()
+      }));
       let result = 'pending';
-      let stake = userVote.stake;
       let payout = 0;
-
       if (bet.status === 'settled') {
-        const votedOptionId = userVote.optionId.toString();
-        const winningOptionId = bet.winningOption !== null ? 
-          bet._id.toString() + '-option-' + (bet.winningOption + 1) : null;
-        
-        if (votedOptionId === winningOptionId) {
-          result = 'won';
-          // Calculate payout (simplified - in real app you'd store this)
-          payout = stake * 1.5; // Placeholder calculation
-        } else {
-          result = 'lost';
-        }
+        if (userVotes.some((v: any) => v.result === 'won')) result = 'won';
+        else result = 'lost';
+        payout = userVotes.filter((v: any) => v.result === 'won').reduce((sum: number, v: any) => sum + v.stake * 1.5, 0); // Placeholder payout
       }
-
       return {
         betId: bet._id.toString(),
         title: bet.title,
+        groupId: bet.groupId.toString(),
+        groupName: groupMap.get(bet.groupId.toString()) || '',
         result,
-        stake,
+        userVotes,
         payout: payout.toFixed(2),
         status: bet.status,
         deadline: bet.deadline

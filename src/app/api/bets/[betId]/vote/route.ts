@@ -4,6 +4,7 @@ import Bet from '@/models/Bet';
 import Group from '@/models/Group';
 import User from '@/models/User';
 import { verifyToken } from '@/lib/auth';
+import Vote from '@/models/Vote';
 
 // POST /api/bets/:betId/vote - Place a vote on a bet
 export async function POST(
@@ -48,9 +49,19 @@ export async function POST(
       return Response.json({ error: 'Bet deadline has passed' }, { status: 400 });
     }
 
-    if (stake < bet.minStake || stake > bet.maxStake) {
+    // Find the option index
+    const optionIndex = bet.options.findIndex((opt: any) => 
+      opt._id.toString() === optionId || 
+      `${bet._id}-option-${bet.options.indexOf(opt) + 1}` === optionId
+    );
+
+    if (optionIndex === -1) {
+      return Response.json({ error: 'Invalid option selected' }, { status: 400 });
+    }
+
+    if (stake < Math.max(1, bet.minStake) || stake > Math.max(1, bet.maxStake)) {
       return Response.json({ 
-        error: `Stake must be between £${bet.minStake} and £${bet.maxStake}` 
+        error: `Stake must be between £${Math.max(1, bet.minStake)} and £${Math.max(1, bet.maxStake)}` 
       }, { status: 400 });
     }
 
@@ -60,69 +71,34 @@ export async function POST(
       return Response.json({ error: 'You must be a member of the group to vote' }, { status: 403 });
     }
 
-    // Check if user has already voted on this bet and remove their previous vote
-    const existingVoteIndex = bet.options.findIndex((option: any) => 
-      option.votes.some((vote: any) => vote.userId.toString() === decoded.userId)
-    );
-    
-    if (existingVoteIndex !== -1) {
-      // Remove the existing vote
-      bet.options[existingVoteIndex].votes = bet.options[existingVoteIndex].votes.filter(
-        (vote: any) => vote.userId.toString() !== decoded.userId
-      );
-    }
-
-    // Get user details to store username
+    // Get user info for vote record
     const user = await User.findById(decoded.userId);
     if (!user) {
       return Response.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Check if user has username
-    if (!user.username) {
-      console.error('User missing username:', { userId: decoded.userId, user: user.toObject() });
-      return Response.json({ error: 'User profile is incomplete - username is required' }, { status: 400 });
+    // Check if user has already voted on this bet
+    const existingVote = await Vote.findOne({ userId: decoded.userId, betId: bet._id });
+    if (existingVote) {
+      // Update the existing vote
+      existingVote.optionId = bet.options[optionIndex]._id;
+      existingVote.stake = stake;
+      existingVote.timestamp = new Date();
+      await existingVote.save();
+      return Response.json({ message: 'Vote updated successfully' });
+    } else {
+      // Create a new Vote document
+      const voteData = {
+        userId: decoded.userId,
+        username: user.username,
+        betId: bet._id,
+        optionId: bet.options[optionIndex]._id,
+        stake: stake,
+        timestamp: new Date()
+      };
+      await Vote.create(voteData);
+      return Response.json({ message: 'Vote placed successfully' });
     }
-
-    console.log('User found for vote:', { userId: decoded.userId, username: user.username });
-
-    // Find the option and add the vote
-    const optionIndex = bet.options.findIndex((option: any) => 
-      option._id.toString() === optionId || `${bet._id}-option-${bet.options.indexOf(option) + 1}` === optionId
-    );
-
-    if (optionIndex === -1) {
-      return Response.json({ error: 'Invalid option ID' }, { status: 400 });
-    }
-
-    // Create vote object with explicit typing
-    const voteData = {
-      userId: decoded.userId,
-      username: user.username,
-      stake: stake,
-      timestamp: new Date()
-    };
-
-    bet.options[optionIndex].votes.push(voteData);
-
-    try {
-      await bet.save();
-    } catch (saveError: any) {
-      console.error('Error saving bet with vote:', saveError);
-      if (saveError.name === 'ValidationError') {
-        console.error('Validation errors:', saveError.errors);
-        return Response.json({ 
-          error: 'Validation failed', 
-          details: Object.keys(saveError.errors).map(key => ({
-            field: key,
-            message: saveError.errors[key].message
-          }))
-        }, { status: 400 });
-      }
-      throw saveError;
-    }
-
-    return Response.json({ message: 'Vote placed successfully' });
   } catch (error) {
     console.error('Error placing vote:', error);
     return Response.json({ error: 'Failed to place vote' }, { status: 500 });

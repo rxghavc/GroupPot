@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import connectDB from '@/lib/db';
 import Bet from '@/models/Bet';
 import Group from '@/models/Group';
+import Vote from '@/models/Vote';
 import { verifyToken } from '@/lib/auth';
 
 // GET /api/groups/:groupId/bets - Get all bets for a group
@@ -23,39 +24,40 @@ export async function GET(
     }
 
     await connectDB();
-    
     const { groupId } = await params;
-
-    // Check if user is a member of the group
     const group = await Group.findById(groupId);
     if (!group) {
       return Response.json({ error: 'Group not found' }, { status: 404 });
     }
-
     if (!group.members.some((memberId: any) => memberId.toString() === decoded.userId)) {
       return Response.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    const bets = await Bet.find({ groupId }).populate('createdBy', 'username');
+    const bets = await Bet.find({ groupId }).lean();
+    const betIds = bets.map((bet: any) => bet._id);
+    const votes = await Vote.find({ betId: { $in: betIds } }).lean();
 
-    // Transform MongoDB _id to id for frontend compatibility
-    const transformedBets = bets.map(bet => ({
-      ...bet.toObject(),
-      id: bet._id.toString(),
-      _id: bet._id,
-      options: bet.options.map((option: any, index: number) => ({
-        ...option.toObject(),
-        id: `${bet._id}-option-${index + 1}`,
-        _id: option._id,
-        votes: option.votes.map((vote: any) => ({
-          userId: vote.userId.toString(),
-          username: vote.username,
-          stake: vote.stake,
-          timestamp: vote.timestamp
-        }))
-      }))
-    }));
-    
+    // Attach vote counts and total stakes to each option
+    const transformedBets = bets.map((bet: any) => {
+      const betVotes = votes.filter((v: any) => v.betId.toString() === bet._id.toString());
+      const options = bet.options.map((option: any, index: number) => {
+        const optionVotes = betVotes.filter((v: any) => v.optionId.toString() === option._id.toString());
+        return {
+          ...option,
+          id: `${bet._id}-option-${index + 1}`,
+          votesCount: optionVotes.length,
+          totalStake: optionVotes.reduce((sum: number, v: any) => sum + v.stake, 0),
+          votes: optionVotes // Optionally include all votes for this option
+        };
+      });
+      return {
+        ...bet,
+        id: bet._id.toString(),
+        _id: bet._id,
+        options
+      };
+    });
+
     return Response.json({ bets: transformedBets });
   } catch (error) {
     console.error('Error fetching group bets:', error);

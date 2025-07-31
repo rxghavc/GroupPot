@@ -88,15 +88,20 @@ export async function POST(
       index === winningOptionIndex ? [] : option.votes
     );
 
+    let winners = [];
+    if (winningVotes.length > 0) {
+      const payoutPerWinner = losingVotes.length > 0 ? (losingVotes.reduce((sum: number, v: any) => sum + v.stake, 0) / winningVotes.length) : 0;
+      winners = winningVotes.map((vote: any) => ({
+        userId: vote.userId.toString(),
+        stake: vote.stake,
+        payout: payoutPerWinner
+      }));
+    }
     const result = {
       totalPool,
       winningOptionId: winningOption._id.toString(),
       winningOptionText: winningOption.text,
-      winners: winningVotes.map((vote: any) => ({
-        userId: vote.userId.toString(),
-        stake: vote.stake,
-        payout: totalPool * (vote.stake / winningVotes.reduce((sum: number, v: any) => sum + v.stake, 0))
-      })),
+      winners,
       losers: losingVotes.map((vote: any) => ({
         userId: vote.userId.toString(),
         stake: vote.stake,

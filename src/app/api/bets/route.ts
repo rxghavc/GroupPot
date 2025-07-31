@@ -89,6 +89,24 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    if (minStake && minStake < 1) {
+      return Response.json({ 
+        error: 'Minimum stake must be at least £1' 
+      }, { status: 400 });
+    }
+
+    if (maxStake && maxStake < 1) {
+      return Response.json({ 
+        error: 'Maximum stake must be at least £1' 
+      }, { status: 400 });
+    }
+
+    if (minStake && maxStake && minStake >= maxStake) {
+      return Response.json({ 
+        error: 'Minimum stake must be less than maximum stake' 
+      }, { status: 400 });
+    }
+
     await connectDB();
 
     // Check if user is a moderator of the group
@@ -117,8 +135,8 @@ export async function POST(req: NextRequest) {
       options: betOptions,
       deadline: new Date(deadline),
       status: 'open',
-      minStake: minStake || group.minStake,
-      maxStake: maxStake || group.maxStake,
+      minStake: Math.max(1, minStake || group.minStake),
+      maxStake: Math.max(1, maxStake || group.maxStake),
       createdBy: decoded.userId,
     });
 
