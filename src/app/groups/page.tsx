@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Trash2, LogIn, Copy, Check, Users } from "lucide-react";
+import { Trash2, LogIn, Copy, Check, Users, Plus, UserPlus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Group } from "@/lib/types";
 import { Label } from "@/components/ui/label";
@@ -279,17 +279,100 @@ export default function GroupsPage() {
       {/* Groups grid section */}
       <div className="w-full flex flex-row flex-wrap gap-6 justify-center px-2">
         {groups.length === 0 ? (
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                <Users className="h-6 w-6 text-primary" />
-              </div>
-              <CardTitle>No Groups Yet</CardTitle>
-              <p className="text-muted-foreground text-sm mt-2">
-                You haven't joined any groups yet. Create a new group or join an existing one to get started.
-              </p>
-            </CardHeader>
-          </Card>
+          <div className="w-full">
+            <Card className="w-full">
+              <CardHeader className="text-center py-12">
+                <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+                  <Users className="h-10 w-10 text-primary" />
+                </div>
+                <CardTitle className="text-2xl mb-3">No Groups Yet</CardTitle>
+                <p className="text-muted-foreground text-base max-w-md mx-auto leading-relaxed">
+                  You haven't joined any groups yet. Create a new group or join an existing one to start betting with friends!
+                </p>
+              </CardHeader>
+              <CardContent className="text-center pb-6">
+                <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
+                  <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        Create New Group
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Create a New Group</DialogTitle>
+                      </DialogHeader>
+                      <form
+                        onSubmit={handleCreateGroup}
+                        className="flex flex-col gap-4 mt-2"
+                      >
+                        <div>
+                          <label className="block text-sm font-medium mb-1">
+                            Group Name
+                          </label>
+                          <Input
+                            name="name"
+                            value={newGroup.name}
+                            onChange={handleInputChange}
+                            placeholder="Enter group name"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-1">
+                            Description
+                          </label>
+                          <textarea
+                            name="description"
+                            value={newGroup.description}
+                            onChange={handleInputChange}
+                            placeholder="Enter group description"
+                            required
+                            className="border rounded px-2 py-1 w-full min-h-[60px] text-sm"
+                          />
+                        </div>
+                        <Button
+                          type="submit"
+                          variant="default"
+                          className="w-full mt-2"
+                        >
+                          Create
+                        </Button>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <Dialog open={joinDialogOpen} onOpenChange={setJoinDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="flex items-center gap-2">
+                        <UserPlus className="h-4 w-4" />
+                        Join Group
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Join a Group</DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={handleJoinGroup} className="flex flex-col gap-4 mt-2">
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Group Code</label>
+                          <Input 
+                            name="joinCode" 
+                            value={joinCode}
+                            onChange={(e) => setJoinCode(e.target.value)}
+                            placeholder="Enter group code" 
+                            required 
+                          />
+                        </div>
+                        <Button type="submit" variant="default" className="w-full mt-2">Join</Button>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         ) : (
           groups.map((group) => (
             <Card key={group.id} className="w-full max-w-md flex-1 min-w-[300px]">
@@ -339,93 +422,103 @@ export default function GroupsPage() {
         )}
       </div>
       
-      {/* Controls & Actions Section */}
-      <div className="w-full px-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Group Controls & Actions</CardTitle>
-            <p className="text-muted-foreground text-sm mt-1">
-              Create a new group or manage your memberships.
-            </p>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="default">Create New Group</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create a New Group</DialogTitle>
-                </DialogHeader>
-                <form
-                  onSubmit={handleCreateGroup}
-                  className="flex flex-col gap-4 mt-2"
-                >
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Group Name
-                    </label>
-                    <Input
-                      name="name"
-                      value={newGroup.name}
-                      onChange={handleInputChange}
-                      placeholder="Enter group name"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Description
-                    </label>
-                    <textarea
-                      name="description"
-                      value={newGroup.description}
-                      onChange={handleInputChange}
-                      placeholder="Enter group description"
-                      required
-                      className="border rounded px-2 py-1 w-full min-h-[60px] text-sm"
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    variant="default"
-                    className="w-full mt-2"
-                  >
-                    Create
+      {/* Controls & Actions Section - Only show when user has groups */}
+      {groups.length > 0 && (
+        <div className="w-full px-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                  <Plus className="h-4 w-4 text-primary" />
+                </div>
+                Group Controls & Actions
+              </CardTitle>
+              <p className="text-muted-foreground text-sm mt-1">
+                Create a new group or manage your memberships.
+              </p>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="default" className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Create New Group
                   </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-            
-            {/* Join Group Dialog */}
-            <Dialog open={joinDialogOpen} onOpenChange={setJoinDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="border-primary text-primary flex items-center gap-1">
-                  <LogIn className="w-4 h-4" /> Join Group
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Join a Group</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleJoinGroup} className="flex flex-col gap-4 mt-2">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Group Code</label>
-                    <Input 
-                      name="joinCode" 
-                      value={joinCode}
-                      onChange={(e) => setJoinCode(e.target.value)}
-                      placeholder="Enter group code" 
-                      required 
-                    />
-                  </div>
-                  <Button type="submit" variant="default" className="w-full mt-2">Join</Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </CardContent>
-        </Card>
-      </div>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create a New Group</DialogTitle>
+                  </DialogHeader>
+                  <form
+                    onSubmit={handleCreateGroup}
+                    className="flex flex-col gap-4 mt-2"
+                  >
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Group Name
+                      </label>
+                      <Input
+                        name="name"
+                        value={newGroup.name}
+                        onChange={handleInputChange}
+                        placeholder="Enter group name"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Description
+                      </label>
+                      <textarea
+                        name="description"
+                        value={newGroup.description}
+                        onChange={handleInputChange}
+                        placeholder="Enter group description"
+                        required
+                        className="border rounded px-2 py-1 w-full min-h-[60px] text-sm"
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      variant="default"
+                      className="w-full mt-2"
+                    >
+                      Create
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+              
+              {/* Join Group Dialog */}
+              <Dialog open={joinDialogOpen} onOpenChange={setJoinDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="border-primary text-primary flex items-center gap-2">
+                    <UserPlus className="w-4 h-4" /> Join Group
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Join a Group</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleJoinGroup} className="flex flex-col gap-4 mt-2">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Group Code</label>
+                      <Input 
+                        name="joinCode" 
+                        value={joinCode}
+                        onChange={(e) => setJoinCode(e.target.value)}
+                        placeholder="Enter group code" 
+                        required 
+                      />
+                    </div>
+                    <Button type="submit" variant="default" className="w-full mt-2">Join</Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Leave Group Confirmation Dialog */}
       <AlertDialog open={leaveDialogOpen} onOpenChange={setLeaveDialogOpen}>
