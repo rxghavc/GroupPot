@@ -13,7 +13,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar"
 
-// This is sample data.
+
 const data = {
   navMain: [
     {
@@ -27,7 +27,7 @@ const data = {
       icon: Users,
     },
     {
-      title: "Bets",
+      title: "My Bets",
       url: "/bets",
       icon: Layers,
     },
@@ -64,9 +64,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenu>
             {data.navMain.map((item) => (
               <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild>
-                  <a href={item.url} className="font-medium flex items-center gap-2">
-                    {item.icon && <item.icon className="w-4 h-4" />}
+                <SidebarMenuButton size="lg" asChild>
+                  <a href={item.url} className="font-medium flex items-center gap-3 py-3 px-4 text-lg lg:text-base lg:gap-2 lg:py-2 lg:px-3">
+                    {item.icon && <item.icon className="w-5 h-5 lg:w-4 lg:h-4" />}
                     {item.title}
                   </a>
                 </SidebarMenuButton>
@@ -77,6 +77,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <div className="flex flex-col gap-2 p-2">
+          <div className="px-3 py-2 text-xs text-muted-foreground leading-relaxed">
+            This app was built as a polling system solution for my father and his friends, I hope you enjoy it!
+          </div>
           <a
             href="https://github.com/rxghavc"
             target="_blank"
