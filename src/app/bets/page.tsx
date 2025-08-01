@@ -245,7 +245,7 @@ function BetsContent({ user, token }: { user: any; token: string }) {
       ) : bets.length === 0 ? (
         <Card className="text-center py-12">
           <CardContent className="pt-6">
-            <Trophy className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+            <Trophy className="w-16 h-16 mx-auto text-green-600 mb-4" />
             <h3 className="text-xl font-semibold mb-2">No Bets Yet</h3>
             <p className="text-muted-foreground mb-4">Start betting to see your portfolio analytics here!</p>
             <Button asChild>
@@ -376,7 +376,10 @@ function BetsContent({ user, token }: { user: any; token: string }) {
             </h2>
             {filteredActiveBets.length === 0 ? (
               <Card className="text-center py-8">
-                <CardContent>
+                <CardContent className="flex flex-col items-center">
+                  <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mb-3">
+                    <PoundSterling className="w-6 h-6 text-green-600" />
+                  </div>
                   <p className="text-muted-foreground">No active bets in {selectedGroup === "all" ? "any group" : selectedGroup}</p>
                 </CardContent>
               </Card>
@@ -430,7 +433,10 @@ function BetsContent({ user, token }: { user: any; token: string }) {
           </h2>
           {filteredPastBets.length === 0 ? (
             <Card className="text-center py-8">
-              <CardContent>
+              <CardContent className="flex flex-col items-center">
+                <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mb-3">
+                  <Trophy className="w-6 h-6 text-green-600" />
+                </div>
                 <p className="text-muted-foreground">No betting history in {selectedGroup === "all" ? "any group" : selectedGroup}</p>
               </CardContent>
             </Card>

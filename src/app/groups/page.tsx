@@ -282,8 +282,8 @@ export default function GroupsPage() {
           <div className="w-full">
             <Card className="w-full">
               <CardHeader className="text-center py-12">
-                <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-                  <Users className="h-10 w-10 text-primary" />
+                <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-50">
+                  <Users className="h-10 w-10 text-green-600" />
                 </div>
                 <CardTitle className="text-2xl mb-3">No Groups Yet</CardTitle>
                 <p className="text-muted-foreground text-base max-w-md mx-auto leading-relaxed">
