@@ -71,9 +71,18 @@ const betSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  votingType: {
+    type: String,
+    enum: ['single', 'multi'],
+    default: 'single'
+  },
   winningOption: {
     type: Number,
     default: null
+  },
+  winningOptions: {
+    type: [Number],
+    default: []
   }
 }, {
   timestamps: true

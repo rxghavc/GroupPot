@@ -24,11 +24,20 @@ export async function POST(
     }
 
     const body = await req.json();
-    const { winningOptionId } = body;
+    const { winningOptionId, winningOptionIds } = body;
 
-    if (!winningOptionId) {
-      return Response.json({ error: 'Winning option ID is required' }, { status: 400 });
-    }
+    // Support both single and multi-vote settlements
+    let finalWinningOptionIds: string[];
+    
+    if (winningOptionIds && Array.isArray(winningOptionIds) && winningOptionIds.length > 0) {
+      // Multi-vote settlement
+      finalWinningOptionIds = winningOptionIds;
+    } else if (winningOptionId) {
+      // Single-vote settlement (backward compatibility)
+      finalWinningOptionIds = [winningOptionId];
+    } else {
+      return Response.json({ error: 'Winning option ID(s) required' }, { status: 400 });
+    } 
 
     await connectDB();
     
@@ -57,17 +66,27 @@ export async function POST(
       return Response.json({ error: 'Only moderators can declare outcomes' }, { status: 403 });
     }
 
-    // Check if the winning option exists
-    const winningOptionIndex = bet.options.findIndex((opt: any) => 
-      opt._id.toString() === winningOptionId || 
-      `${bet._id}-option-${bet.options.indexOf(opt) + 1}` === winningOptionId
-    );
+    // Check if the winning options exist
+    const winningOptionIndices: number[] = [];
+    const winningOptions: any[] = [];
     
-    if (winningOptionIndex === -1) {
-      return Response.json({ error: 'Invalid winning option' }, { status: 400 });
+    for (const optionId of finalWinningOptionIds) {
+      const optionIndex = bet.options.findIndex((opt: any) => 
+        opt._id.toString() === optionId || 
+        `${bet._id}-option-${bet.options.indexOf(opt) + 1}` === optionId
+      );
+      
+      if (optionIndex === -1) {
+        return Response.json({ error: `Invalid winning option: ${optionId}` }, { status: 400 });
+      }
+      
+      winningOptionIndices.push(optionIndex);
+      winningOptions.push(bet.options[optionIndex]);
     }
 
-    const winningOption = bet.options[winningOptionIndex];
+    // Remove duplicates and sort for consistency
+    const uniqueWinningIndices = [...new Set(winningOptionIndices)].sort();
+    const uniqueWinningOptions = uniqueWinningIndices.map(i => bet.options[i]);
 
     // Close the bet if it's still open
     if (bet.status === 'open') {
@@ -76,7 +95,15 @@ export async function POST(
 
     // Settle the bet
     bet.status = 'settled';
-    bet.winningOption = winningOptionIndex;
+    
+    // Store winning options based on bet type
+    if (bet.votingType === 'multi') {
+      bet.winningOptions = uniqueWinningIndices;
+    } else {
+      // Single vote - use legacy field for backward compatibility
+      bet.winningOption = uniqueWinningIndices[0];
+    }
+    
     await bet.save();
 
     // Fetch all votes for this bet from the Vote collection
@@ -103,52 +130,132 @@ export async function POST(
     // Calculate total pool from all votes
     const totalPool = allVotes.reduce((total, vote) => total + vote.stake, 0);
 
-    const winningVotes = votesByOption.get(winningOption._id.toString()) || [];
-    
-    // Get losing votes (all votes not on winning option)
-    const losingVotes = [];
-    bet.options.forEach((option: any, index: number) => {
-      if (index !== winningOptionIndex) {
-        const optionVotes = votesByOption.get(option._id.toString()) || [];
-        losingVotes.push(...optionVotes);
-      }
-    });
+    let winners: any[] = [];
+    let losers: any[] = [];
 
-    // Calculate total losing stakes (this goes to winners)
-    const totalLosingStakes = losingVotes.reduce((sum, vote) => sum + vote.stake, 0);
-    const totalWinningStakes = winningVotes.reduce((sum, vote) => sum + vote.stake, 0);
-
-    const winners = winningVotes.map((vote: any) => {
-      // Each winner gets their stake back plus a proportional share of losing stakes
-      const proportionalShare = totalWinningStakes > 0 ? 
-        (vote.stake / totalWinningStakes) * totalLosingStakes : 0;
-      const payout = vote.stake + proportionalShare;
+    if (bet.votingType === 'multi') {
+      // Multi-vote logic: Users must have voted on ALL winning options and ONLY those options
+      const winningOptionIds = uniqueWinningOptions.map(opt => opt._id.toString()).sort();
       
-      return {
+      // Group all votes by user
+      const votesByUser = new Map();
+      allVotes.forEach((vote) => {
+        const userId = vote.userId.toString();
+        if (!votesByUser.has(userId)) {
+          votesByUser.set(userId, []);
+        }
+        votesByUser.get(userId).push(vote);
+      });
+
+      // Determine winners and losers
+      votesByUser.forEach((userVotes, userId) => {
+        const userOptionIds = userVotes.map((vote: any) => vote.optionId.toString()).sort();
+        const totalUserStake = userVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
+        
+        // Check if user voted on exactly the winning options (no more, no less)
+        const isWinner = userOptionIds.length === winningOptionIds.length && 
+                         userOptionIds.every((id: string) => winningOptionIds.includes(id));
+        
+        const userRecord = {
+          userId: userId,
+          username: userVotes[0].username,
+          stake: totalUserStake
+        };
+
+        if (isWinner) {
+          winners.push(userRecord);
+        } else {
+          losers.push(userRecord);
+        }
+      });
+    } else {
+      // Single vote logic (existing logic)
+      const winningVotes = votesByOption.get(uniqueWinningOptions[0]._id.toString()) || [];
+      
+      // Get losing votes (all votes not on winning option)
+      bet.options.forEach((option: any, index: number) => {
+        if (!uniqueWinningIndices.includes(index)) {
+          const optionVotes = votesByOption.get(option._id.toString()) || [];
+          losers.push(...optionVotes.map((vote: any) => ({
+            userId: vote.userId,
+            username: vote.username,
+            stake: vote.stake
+          })));
+        }
+      });
+
+      winners = winningVotes.map((vote: any) => ({
         userId: vote.userId,
         username: vote.username,
-        stake: vote.stake,
-        payout: payout
-      };
-    });
+        stake: vote.stake
+      }));
+    }
+
+    // Calculate payouts using the pool-based system
+    const totalLosingStakes = losers.reduce((sum, loser) => sum + loser.stake, 0);
+    const totalWinningStakes = winners.reduce((sum, winner) => sum + winner.stake, 0);
+
+    let winnersWithPayouts: any[] = [];
+    let losersWithLoss: any[] = [];
+
+    // Check if there are no winners - if so, refund all stakes
+    if (winners.length === 0) {
+      // No winners scenario: Everyone gets their stake back
+      const allParticipants = [...losers]; // In this case, everyone is initially in "losers"
+      winnersWithPayouts = allParticipants.map((participant: any) => ({
+        userId: participant.userId,
+        username: participant.username,
+        stake: participant.stake,
+        payout: participant.stake // Full stake refund
+      }));
+      
+      losersWithLoss = []; // No one loses money when stakes are refunded
+    } else {
+      // Normal scenario: Winners split the pool
+      winnersWithPayouts = winners.map((winner: any) => {
+        // Each winner gets their stake back plus a proportional share of losing stakes
+        const proportionalShare = totalWinningStakes > 0 ? 
+          (winner.stake / totalWinningStakes) * totalLosingStakes : 0;
+        const payout = winner.stake + proportionalShare;
+        
+        return {
+          userId: winner.userId,
+          username: winner.username,
+          stake: winner.stake,
+          payout: payout
+        };
+      });
+
+      losersWithLoss = losers.map((loser: any) => ({
+        userId: loser.userId,
+        username: loser.username,
+        stake: loser.stake,
+        loss: loser.stake
+      }));
+    }
 
     const result = {
       totalPool,
-      winningOptionId: winningOption._id.toString(),
-      winningOptionText: winningOption.text,
-      winners,
-      losers: losingVotes.map((vote: any) => ({
-        userId: vote.userId,
-        username: vote.username,
-        stake: vote.stake,
-        loss: vote.stake
-      }))
+      // Backward compatibility fields for single vote
+      winningOptionId: uniqueWinningOptions[0]._id.toString(),
+      winningOptionText: uniqueWinningOptions[0].text,
+      // New fields for multi-vote support
+      winningOptionIds: uniqueWinningOptions.map(opt => opt._id.toString()),
+      winningOptionTexts: uniqueWinningOptions.map(opt => opt.text),
+      winners: winnersWithPayouts,
+      losers: losersWithLoss,
+      // Indicate if this was a refund scenario
+      isRefund: winners.length === 0
     };
+
+    const message = winners.length === 0 
+      ? 'No winners found - all stakes have been refunded'
+      : 'Bet settled successfully';
 
     return Response.json({ 
       result, 
-      message: 'Bet settled successfully',
-      winningOption: winningOption.text
+      message,
+      winningOptions: uniqueWinningOptions.map(opt => opt.text)
     });
   } catch (error) {
     console.error('Error settling bet:', error);
