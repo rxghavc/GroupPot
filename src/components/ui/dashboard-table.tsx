@@ -123,8 +123,8 @@ export function DashboardTable({ data = [], loading = false }: DashboardTablePro
 							<TableCell colSpan={columns.length} className="h-32">
 								{data.length === 0 ? (
 									<div className="flex flex-col items-center justify-center text-center py-8 px-4">
-										<div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted/50 mb-4">
-											<TrendingUp className="h-8 w-8 text-muted-foreground" />
+										<div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-50 mb-4">
+											<TrendingUp className="h-8 w-8 text-green-600" />
 										</div>
 										<h3 className="text-lg font-semibold mb-2">No bets yet</h3>
 										<p className="text-muted-foreground mb-6 max-w-sm">
@@ -144,8 +144,8 @@ export function DashboardTable({ data = [], loading = false }: DashboardTablePro
 									</div>
 								) : (
 									<div className="flex flex-col items-center justify-center text-center py-8 px-4">
-										<div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50 mb-3">
-											<TrendingUp className="h-6 w-6 text-muted-foreground" />
+										<div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-50 mb-3">
+											<TrendingUp className="h-6 w-6 text-green-600" />
 										</div>
 										<p className="text-muted-foreground">No results found for your search.</p>
 									</div>
