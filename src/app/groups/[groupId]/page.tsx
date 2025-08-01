@@ -4,7 +4,7 @@ import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Plus, Users, PoundSterling, Eye, Copy, Check, Trophy, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Users, PoundSterling, Eye, Copy, Check, Trophy, ChevronLeft, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
 import { Group, Bet, BetResult } from "@/lib/types";
 import { BetCard } from "@/components/ui/BetCard";
 import { BetForm } from "@/components/ui/BetForm";
@@ -63,6 +63,8 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [pendingDeleteBet, setPendingDeleteBet] = useState<Bet | null>(null);
+  const [memberProfits, setMemberProfits] = useState<Map<string, any>>(new Map());
+  const [loadingProfits, setLoadingProfits] = useState(false);
 
   // Auto-refresh functionality
   const {
@@ -194,9 +196,32 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
     resetUserActivity(); // Resume auto-refresh
   };
 
-  const handleOpenMembers = () => {
+  const handleOpenMembers = async () => {
     pauseAutoRefresh();
     setShowMembers(true);
+    
+    // Load profit data for all members
+    if (group) {
+      setLoadingProfits(true);
+      const profitPromises = group.members.map(async (member: any) => {
+        const memberId = member._id || member.id;
+        const profitData = await calculateMemberProfit(memberId);
+        return { memberId, profitData };
+      });
+      
+      try {
+        const results = await Promise.all(profitPromises);
+        const profitMap = new Map();
+        results.forEach(({ memberId, profitData }) => {
+          profitMap.set(memberId, profitData);
+        });
+        setMemberProfits(profitMap);
+      } catch (error) {
+        console.error('Error loading member profits:', error);
+      } finally {
+        setLoadingProfits(false);
+      }
+    }
   };
 
   const handleCloseMembers = () => {
@@ -389,6 +414,58 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   const handlePageSizeChange = (newPageSize: string) => {
     setPageSize(parseInt(newPageSize));
     setCurrentPage(1); // Reset to first page when changing page size
+  };
+
+  // Calculate member profit/loss for this group
+  const calculateMemberProfit = async (memberId: string) => {
+    try {
+      const response = await fetch(`/api/users/${memberId}/bets`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const userBets = await response.json();
+        
+        // Filter bets for this specific group
+        const groupBets = userBets.filter((bet: any) => bet.groupId === groupId);
+        
+        // Calculate profit/loss
+        const totalStakes = groupBets.reduce((sum: number, bet: any) => 
+          sum + bet.userVotes.reduce((voteSum: number, vote: any) => voteSum + vote.stake, 0), 0
+        );
+        
+        const totalPayouts = groupBets.reduce((sum: number, bet: any) => 
+          sum + (bet.status === 'settled' ? parseFloat(bet.payout) : 0), 0
+        );
+        
+        const netProfit = totalPayouts - totalStakes;
+        const winRate = groupBets.filter((bet: any) => bet.status === 'settled').length > 0 
+          ? (groupBets.filter((bet: any) => bet.result === 'won').length / groupBets.filter((bet: any) => bet.status === 'settled').length) * 100 
+          : 0;
+        
+        return {
+          totalStakes,
+          totalPayouts,
+          netProfit,
+          winRate,
+          totalBets: groupBets.length,
+          settledBets: groupBets.filter((bet: any) => bet.status === 'settled').length
+        };
+      }
+    } catch (error) {
+      console.error('Error calculating member profit:', error);
+    }
+    
+    return {
+      totalStakes: 0,
+      totalPayouts: 0,
+      netProfit: 0,
+      winRate: 0,
+      totalBets: 0,
+      settledBets: 0
+    };
   };
 
   // Handle member removal
@@ -684,20 +761,22 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
 
       {/* View Members Dialog */}
       <Dialog open={showMembers} onOpenChange={handleCloseMembers}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Group Members ({group.members.length})</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="space-y-2">
             {group.members.map((member: any) => {
-              const isOwner = group.ownerId === member._id || group.ownerId === member.id;
-              const isMod = group.moderators.includes(member._id || member.id);
-              const canManage = isModerator && !isOwner && (member._id || member.id) !== user?.id;
+              const memberId = member._id || member.id;
+              const isOwner = group.ownerId === memberId;
+              const isMod = group.moderators.includes(memberId);
+              const canManage = isModerator && !isOwner && memberId !== user?.id;
+              const profitData = memberProfits.get(memberId);
               
               return (
-                <div key={member._id || member.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div>
+                <div key={memberId} className="flex items-center justify-between p-4 border rounded-lg bg-card">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{member.username}</span>
                         {isOwner && (
@@ -713,14 +792,54 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                       </div>
                       <span className="text-sm text-muted-foreground">{member.email}</span>
                     </div>
+                    
+                    {/* Member Profit Stats */}
+                    <div className="flex items-center gap-6 text-sm">
+                      {loadingProfits ? (
+                        <div className="flex items-center gap-2">
+                          <div className="h-4 w-16 bg-muted rounded animate-pulse"></div>
+                          <div className="h-4 w-16 bg-muted rounded animate-pulse"></div>
+                        </div>
+                      ) : profitData ? (
+                        <>
+                          <div className="text-center">
+                            <div className="text-xs text-muted-foreground">Total Bets</div>
+                            <div className="font-medium">{profitData.totalBets}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-xs text-muted-foreground">Win Rate</div>
+                            <div className="font-medium">{profitData.winRate.toFixed(1)}%</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-xs text-muted-foreground">Total Staked</div>
+                            <div className="font-medium">£{profitData.totalStakes.toFixed(2)}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-xs text-muted-foreground">Net P&L</div>
+                            <div className={`font-medium flex items-center gap-1 ${
+                              profitData.netProfit >= 0 ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {profitData.netProfit >= 0 ? (
+                                <TrendingUp className="w-3 h-3" />
+                              ) : (
+                                <TrendingDown className="w-3 h-3" />
+                              )}
+                              {profitData.netProfit >= 0 ? '+' : ''}£{profitData.netProfit.toFixed(2)}
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-xs text-muted-foreground">No betting data</div>
+                      )}
+                    </div>
                   </div>
                   
                   {canManage && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 ml-4">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleToggleModerator(member._id || member.id, isMod)}
+                        onClick={() => handleToggleModerator(memberId, isMod)}
                         className="text-xs"
                       >
                         {isMod ? 'Demote' : 'Promote'}
@@ -728,11 +847,11 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => handleRemoveMember(member._id || member.id)}
-                        disabled={removingMemberId === (member._id || member.id)}
+                        onClick={() => handleRemoveMember(memberId)}
+                        disabled={removingMemberId === memberId}
                         className="text-xs"
                       >
-                        {removingMemberId === (member._id || member.id) ? 'Removing...' : 'Remove'}
+                        {removingMemberId === memberId ? 'Removing...' : 'Remove'}
                       </Button>
                     </div>
                   )}
