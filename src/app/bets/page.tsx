@@ -36,69 +36,71 @@ export default function UserBetsPage() {
 
   if (authLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header Skeleton */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="h-9 bg-muted rounded w-64 mb-2 animate-pulse"></div>
-            <div className="h-5 bg-muted rounded w-96 animate-pulse"></div>
+      <div className="flex flex-1 flex-col">
+        <div className="@container/main flex flex-1 flex-col gap-4">
+          {/* Header Skeleton */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <div className="h-9 bg-muted rounded w-64 mb-2 animate-pulse"></div>
+              <div className="h-5 bg-muted rounded w-96 animate-pulse"></div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="h-10 bg-muted rounded w-48 animate-pulse"></div>
+              <div className="h-10 bg-muted rounded w-32 animate-pulse"></div>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="h-10 bg-muted rounded w-48 animate-pulse"></div>
-            <div className="h-10 bg-muted rounded w-32 animate-pulse"></div>
-          </div>
-        </div>
 
-        {/* Financial Overview Cards Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="h-4 bg-muted rounded w-20"></div>
-                <div className="h-4 w-4 bg-muted rounded"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-muted rounded w-16 mb-1"></div>
-                <div className="h-3 bg-muted rounded w-24"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Chart Skeleton */}
-        <Card className="mb-8 animate-pulse">
-          <CardHeader>
-            <div className="h-6 bg-muted rounded w-48 mb-2"></div>
-            <div className="h-4 bg-muted rounded w-64"></div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[400px] bg-muted rounded"></div>
-          </CardContent>
-        </Card>
-
-        {/* Active Bets Skeleton */}
-        <div className="mb-8">
-          <div className="h-8 bg-muted rounded w-32 mb-4 animate-pulse"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
+          {/* Financial Overview Cards Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {[1, 2, 3, 4].map((i) => (
               <Card key={i} className="animate-pulse">
-                <CardHeader>
-                  <div className="h-6 bg-muted rounded w-40 mb-2"></div>
-                  <div className="flex items-center justify-between">
-                    <div className="h-5 bg-muted rounded w-20"></div>
-                    <div className="h-5 bg-muted rounded w-16"></div>
-                  </div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div className="h-4 bg-muted rounded w-20"></div>
+                  <div className="h-4 w-4 bg-muted rounded"></div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    <div className="h-4 bg-muted rounded w-20 mb-2"></div>
-                    <div className="h-4 bg-muted rounded w-full"></div>
-                    <div className="h-4 bg-muted rounded w-3/4"></div>
-                    <div className="h-4 bg-muted rounded w-1/2"></div>
-                  </div>
+                  <div className="h-8 bg-muted rounded w-16 mb-1"></div>
+                  <div className="h-3 bg-muted rounded w-24"></div>
                 </CardContent>
               </Card>
             ))}
+          </div>
+
+          {/* Chart Skeleton */}
+          <Card className="mb-8 animate-pulse">
+            <CardHeader>
+              <div className="h-6 bg-muted rounded w-48 mb-2"></div>
+              <div className="h-4 bg-muted rounded w-64"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[400px] bg-muted rounded"></div>
+            </CardContent>
+          </Card>
+
+          {/* Active Bets Skeleton */}
+          <div className="mb-8">
+            <div className="h-8 bg-muted rounded w-32 mb-4 animate-pulse"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader>
+                    <div className="h-6 bg-muted rounded w-40 mb-2"></div>
+                    <div className="flex items-center justify-between">
+                      <div className="h-5 bg-muted rounded w-20"></div>
+                      <div className="h-5 bg-muted rounded w-16"></div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="h-4 bg-muted rounded w-20 mb-2"></div>
+                      <div className="h-4 bg-muted rounded w-full"></div>
+                      <div className="h-4 bg-muted rounded w-3/4"></div>
+                      <div className="h-4 bg-muted rounded w-1/2"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -199,43 +201,44 @@ function BetsContent({ user, token }: { user: any; token: string }) {
   const filteredPastBets = selectedGroup === "all" ? pastBets : pastBets.filter(bet => bet.groupName === selectedGroup);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">My Betting Portfolio</h1>
-          <p className="text-muted-foreground mt-1">Track your bets, analyze performance, and manage your stakes</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Select group" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Groups</SelectItem>
-              {uniqueGroups.map(group => (
-                <SelectItem key={group} value={group}>{group}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="flex bg-muted rounded-lg p-1">
-            <Button
-              variant={viewMode === "overview" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("overview")}
-            >
-              Overview
-            </Button>
-            <Button
-              variant={viewMode === "history" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("history")}
-            >
-              History
-            </Button>
+    <div className="flex flex-1 flex-col">
+      <div className="@container/main flex flex-1 flex-col gap-4">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold">My Betting Portfolio</h1>
+            <p className="text-muted-foreground mt-1">Track your bets, analyze performance, and manage your stakes</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Groups</SelectItem>
+                {uniqueGroups.map(group => (
+                  <SelectItem key={group} value={group}>{group}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === "overview" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("overview")}
+              >
+                Overview
+              </Button>
+              <Button
+                variant={viewMode === "history" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("history")}
+              >
+                History
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
 
       {loading ? (
         <div className="text-center py-12">Loading your betting data...</div>
@@ -496,6 +499,7 @@ function BetsContent({ user, token }: { user: any; token: string }) {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 } 
