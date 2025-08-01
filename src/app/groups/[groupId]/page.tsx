@@ -54,6 +54,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   const [alertType, setAlertType] = useState<"error" | "success">("error");
   const [settleDialogOpen, setSettleDialogOpen] = useState(false);
   const [pendingSettleOption, setPendingSettleOption] = useState<string | null>(null);
+  const [pendingSettleOptions, setPendingSettleOptions] = useState<string[]>([]);
   const [pendingSettleBet, setPendingSettleBet] = useState<Bet | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [showResultsDialog, setShowResultsDialog] = useState(false);
@@ -236,6 +237,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
     deadline: string;
     minStake: number;
     maxStake: number;
+    votingType: 'single' | 'multi';
   }) {
     if (!groupId) return;
     
@@ -267,6 +269,9 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
     }
   }
 
+  // State for handling multi-vote debouncing
+  const [voteTimeout, setVoteTimeout] = useState<NodeJS.Timeout | null>(null);
+
   async function handleVote(voteData: { optionId: string; stake: number }) {
     try {
       // Find the bet that contains this option
@@ -290,13 +295,24 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
       if (response.ok) {
         const result = await response.json();
         console.log('Vote successful:', result);
-        // Refresh the bets to show updated vote counts
-        fetchGroupData();
-        // Also refresh the user's bets page
-        if (user && token) {
-          mutate([`/api/users/${user.id}/bets`, token]);
+        
+        // For multi-vote bets, debounce the refresh to avoid multiple rapid updates
+        if (voteTimeout) {
+          clearTimeout(voteTimeout);
         }
-        showAlert('Vote placed successfully!', 'success');
+        
+        const newTimeout = setTimeout(() => {
+          // Refresh the bets to show updated vote counts
+          fetchGroupData();
+          // Also refresh the user's bets page
+          if (user && token) {
+            mutate([`/api/users/${user.id}/bets`, token]);
+          }
+          showAlert('Vote(s) placed successfully!', 'success');
+          setVoteTimeout(null);
+        }, 500); // Wait 500ms for any additional votes
+        
+        setVoteTimeout(newTimeout);
       } else {
         const error = await response.json();
         console.error('Vote failed:', error);
@@ -308,16 +324,24 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
     }
   }
 
-  async function handleSettle(winningOptionId: string) {
+  async function handleSettle(winningOptionId: string | string[]) {
     try {
       // Find the bet that contains this option
-      const bet = bets.find(b => b.options.some(opt => opt.id === winningOptionId));
+      const optionIds = Array.isArray(winningOptionId) ? winningOptionId : [winningOptionId];
+      const bet = bets.find(b => 
+        optionIds.some(id => b.options.some(opt => opt.id === id))
+      );
+      
       if (!bet) {
         showAlert('Bet not found for this option');
         return;
       }
 
-      console.log('Settling bet:', { betId: bet.id, winningOptionId });
+      console.log('Settling bet:', { betId: bet.id, optionIds });
+
+      const requestBody = Array.isArray(winningOptionId) 
+        ? { winningOptionIds: winningOptionId }
+        : { winningOptionId: winningOptionId };
 
       const response = await fetch(`/api/bets/${bet.id}/outcome`, {
         method: 'POST',
@@ -325,7 +349,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ winningOptionId }),
+        body: JSON.stringify(requestBody),
       });
 
       if (response.ok) {
@@ -334,7 +358,8 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
         setResults(prev => new Map(prev).set(bet.id, data.result));
         // Refresh the bets to show updated status
         fetchGroupData();
-        showAlert('Bet settled successfully!', 'success');
+        // Show appropriate message based on whether it was a refund or normal settlement
+        showAlert(data.message || 'Bet settled successfully!', 'success');
       } else {
         const error = await response.json();
         console.error('Settle failed:', error);
@@ -373,11 +398,18 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   };
 
   const handleSettleConfirmed = async () => {
-    if (!pendingSettleOption || !pendingSettleBet) return;
+    if (!pendingSettleBet) return;
+    
+    const optionsToSettle = pendingSettleBet.votingType === 'multi' 
+      ? pendingSettleOptions
+      : [pendingSettleOption].filter(Boolean);
+    
+    if (optionsToSettle.length === 0) return;
     
     setSettleDialogOpen(false);
-    await handleSettle(pendingSettleOption);
+    await handleSettle(pendingSettleBet.votingType === 'multi' ? pendingSettleOptions : pendingSettleOption!);
     setPendingSettleOption(null);
+    setPendingSettleOptions([]);
     setPendingSettleBet(null);
   };
 
@@ -1170,38 +1202,71 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
           <AlertDialogHeader>
             <AlertDialogTitle>Settle Bet: {pendingSettleBet?.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              Select the winning option for this bet. This action cannot be undone and will calculate payouts for all participants.
+              {pendingSettleBet?.votingType === 'multi' 
+                ? 'Select all winning options for this multi-vote bet. Users must have voted on ALL selected options (and only those options) to win.'
+                : 'Select the winning option for this bet. This action cannot be undone and will calculate payouts for all participants.'
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           {pendingSettleBet && (
             <div className="my-4">
-              <label className="block text-sm font-medium mb-2">Select Winning Option:</label>
+              <label className="block text-sm font-medium mb-2">
+                {pendingSettleBet.votingType === 'multi' 
+                  ? 'Select Winning Options (check all that apply):'
+                  : 'Select Winning Option:'
+                }
+              </label>
               <div className="space-y-2">
                 {pendingSettleBet.options.map((option) => (
                   <label key={option.id} className="flex items-center space-x-2 cursor-pointer">
                     <input
-                      type="radio"
-                      name="winningOption"
+                      type={pendingSettleBet.votingType === 'multi' ? 'checkbox' : 'radio'}
+                      name={pendingSettleBet.votingType === 'multi' ? 'winningOptions' : 'winningOption'}
                       value={option.id}
-                      checked={pendingSettleOption === option.id}
-                      onChange={(e) => setPendingSettleOption(e.target.value)}
+                      checked={pendingSettleBet.votingType === 'multi' 
+                        ? pendingSettleOptions.includes(option.id)
+                        : pendingSettleOption === option.id
+                      }
+                      onChange={(e) => {
+                        if (pendingSettleBet.votingType === 'multi') {
+                          if (e.target.checked) {
+                            setPendingSettleOptions(prev => [...prev, option.id]);
+                          } else {
+                            setPendingSettleOptions(prev => prev.filter(id => id !== option.id));
+                          }
+                        } else {
+                          setPendingSettleOption(e.target.value);
+                        }
+                      }}
                       className="text-primary"
                     />
                     <span className="text-sm">{option.text}</span>
                   </label>
                 ))}
               </div>
+              {pendingSettleBet.votingType === 'multi' && (
+                <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-xs text-blue-700">
+                    <strong>Multi-vote rules:</strong> Only users who voted on ALL selected options (and no others) will win. 
+                    For example, if you select options A and B, users who voted on A+B win, but users who voted on A+B+C or just A will lose.
+                  </p>
+                </div>
+              )}
             </div>
           )}
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => {
               setPendingSettleOption(null);
+              setPendingSettleOptions([]);
               setPendingSettleBet(null);
             }}>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleSettleConfirmed} 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={!pendingSettleOption}
+              disabled={pendingSettleBet?.votingType === 'multi' 
+                ? pendingSettleOptions.length === 0
+                : !pendingSettleOption
+              }
             >
               Settle Bet
             </AlertDialogAction>

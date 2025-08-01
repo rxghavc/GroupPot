@@ -54,6 +54,7 @@ export async function GET(
         ...bet,
         id: bet._id.toString(),
         _id: bet._id,
+        votingType: bet.votingType || 'single', // Default to 'single' for existing bets
         options
       };
     });

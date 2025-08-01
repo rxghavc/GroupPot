@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
       ...bet.toObject(),
       id: bet._id.toString(),
       _id: bet._id,
+      votingType: bet.votingType || 'single', // Default to 'single' for existing bets
       options: bet.options.map((option: any, index: number) => ({
         ...option.toObject(),
         id: `${bet._id}-option-${index + 1}`,
@@ -74,7 +75,8 @@ export async function POST(req: NextRequest) {
       options, 
       deadline, 
       minStake, 
-      maxStake 
+      maxStake,
+      votingType = 'single'
     } = body;
 
     if (!groupId || !title || !description || !options || !deadline) {
@@ -135,6 +137,7 @@ export async function POST(req: NextRequest) {
       options: betOptions,
       deadline: new Date(deadline),
       status: 'open',
+      votingType,
       minStake: Math.max(1, minStake || group.minStake),
       maxStake: Math.max(1, maxStake || group.maxStake),
       createdBy: decoded.userId,

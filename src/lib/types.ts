@@ -52,6 +52,7 @@ export interface Bet {
   deadline: Date;
   status: 'open' | 'closed' | 'settled' | 'pending';
   outcome?: string; // Winning option ID
+  votingType: 'single' | 'multi';
   minStake: number;
   maxStake: number;
   createdBy: string; // User ID
@@ -60,9 +61,12 @@ export interface Bet {
 
 export interface BetResult {
   betId: string;
-  winningOptionId: string;
-  winningOptionText: string;
+  winningOptionId?: string; // For single vote backwards compatibility
+  winningOptionText?: string; // For single vote backwards compatibility
+  winningOptionIds: string[]; // For multi-vote
+  winningOptionTexts: string[]; // For multi-vote
   totalPool: number;
+  isRefund?: boolean; // True when no winners and stakes are refunded
   winners: {
     userId: string;
     username: string;

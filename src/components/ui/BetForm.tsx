@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, X } from "lucide-react";
@@ -10,6 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@/components/ui/toggle-group";
 
 interface BetFormProps {
   groupId: string;
@@ -23,6 +27,7 @@ interface BetFormProps {
     deadline: string;
     minStake: number;
     maxStake: number;
+    votingType: 'single' | 'multi';
   }) => void;
   onCancel: () => void;
 }
@@ -34,6 +39,25 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, open, onSubmit,
   const [deadline, setDeadline] = useState("");
   const [minStake, setMinStake] = useState(Math.max(1, groupMinStake));
   const [maxStake, setMaxStake] = useState(Math.max(1, groupMaxStake));
+  const [votingType, setVotingType] = useState<'single' | 'multi'>('single');
+
+  // Reset form when dialog closes
+  function resetForm() {
+    setTitle("");
+    setDescription("");
+    setOptions(["", ""]);
+    setDeadline("");
+    setMinStake(Math.max(1, groupMinStake));
+    setMaxStake(Math.max(1, groupMaxStake));
+    setVotingType('single');
+  }
+
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (open) {
+      resetForm();
+    }
+  }, [open, groupMinStake, groupMaxStake]);
 
   function addOption() {
     setOptions([...options, ""]);
@@ -91,11 +115,20 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, open, onSubmit,
       deadline,
       minStake,
       maxStake,
+      votingType,
     });
+
+    // Reset form after submission
+    resetForm();
+  }
+
+  function handleCancel() {
+    resetForm();
+    onCancel();
   }
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleCancel()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Bet</DialogTitle>
@@ -186,6 +219,29 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, open, onSubmit,
             {/* Right Column */}
             <div className="space-y-4">
               <div>
+                <label className="block text-sm font-medium mb-2">Voting Type *</label>
+                <ToggleGroup 
+                  type="single" 
+                  value={votingType} 
+                  onValueChange={(value) => value && setVotingType(value as 'single' | 'multi')}
+                  className="justify-start"
+                >
+                  <ToggleGroupItem value="single" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                    Single Vote
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="multi" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                    Multi Vote
+                  </ToggleGroupItem>
+                </ToggleGroup>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {votingType === 'single' 
+                    ? 'Members can pick only one option' 
+                    : 'Members can pick multiple options. All selected options must win for payout.'
+                  }
+                </p>
+              </div>
+              
+              <div>
                 <label className="block text-sm font-medium mb-2">Options *</label>
                 <div className="space-y-3">
                   {options.map((option, index) => (
@@ -229,7 +285,7 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, open, onSubmit,
             <Button type="submit" className="flex-1 h-11">
               Create Bet
             </Button>
-            <Button type="button" variant="outline" onClick={onCancel} className="h-11 px-8">
+            <Button type="button" variant="outline" onClick={handleCancel} className="h-11 px-8">
               Cancel
             </Button>
           </div>

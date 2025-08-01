@@ -297,7 +297,12 @@ export function BetCard({
           {bet.options.map((option) => {
             const voteCount = option.votesCount || 0;
             const totalStake = option.totalStake || 0;
-            const isWinning = result?.winningOptionId === option.id;
+            // Check for both single and multi-vote winning conditions
+            const isWinning = result?.winningOptionId === option.id || 
+                             (result?.winningOptionIds && result.winningOptionIds.some((winId: string) => {
+                               // Convert between different ID formats if needed
+                               return winId === option.id || winId === option._id?.toString();
+                             }));
             const userVoted = user && option.votes && option.votes.some(v => v.userId === user.id);
             
             return (
@@ -340,6 +345,60 @@ export function BetCard({
             );
           })}
         </div>
+
+        {/* Multi-vote user combinations - Show for multi-vote bets only */}
+        {bet.votingType === 'multi' && getTotalVotes() > 0 && (
+          <div className="space-y-2">
+            <h4 className="font-medium">User Vote Combinations:</h4>
+            <div className="bg-blue-50 rounded-lg p-3">
+              {(() => {
+                // Collect all users and their votes across all options
+                const userVoteMap = new Map();
+                
+                bet.options.forEach(option => {
+                  if (option.votes && option.votes.length > 0) {
+                    option.votes.forEach(vote => {
+                      const userId = vote.userId;
+                      const username = vote.username || vote.userId || 'Unknown User';
+                      if (!userVoteMap.has(userId)) {
+                        userVoteMap.set(userId, {
+                          username,
+                          options: [],
+                          totalStake: 0
+                        });
+                      }
+                      userVoteMap.get(userId).options.push(option.text);
+                      userVoteMap.get(userId).totalStake += vote.stake;
+                    });
+                  }
+                });
+
+                if (userVoteMap.size === 0) {
+                  return (
+                    <div className="text-sm text-muted-foreground text-center py-2">
+                      No votes recorded yet
+                    </div>
+                  );
+                }
+
+                return Array.from(userVoteMap.values()).map((userVote, index) => (
+                  <div key={index} className="flex items-center justify-between text-sm bg-white px-3 py-2 rounded border">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{userVote.username}</span>
+                      <span className="text-muted-foreground">voted on:</span>
+                      <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                        {userVote.options.join(' + ')}
+                      </span>
+                    </div>
+                    <span className="text-muted-foreground text-xs">
+                      Total: £{userVote.totalStake.toFixed(2)}
+                    </span>
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-2">
@@ -387,6 +446,7 @@ export function BetCard({
               options={bet.options}
               minStake={bet.minStake}
               maxStake={bet.maxStake}
+              votingType={bet.votingType || 'single'}
               onSubmit={handleVote}
               onCancel={() => setShowVoteForm(false)}
               userVote={userVote}

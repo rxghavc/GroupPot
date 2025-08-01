@@ -24,6 +24,7 @@ export async function GET(
       id: bet._id.toString(),
       title: bet.title,
       description: bet.description,
+      votingType: bet.votingType || 'single', // Default to 'single' for existing bets
       options: bet.options.map((option: any) => ({
         id: option._id.toString(),
         text: option.text,
