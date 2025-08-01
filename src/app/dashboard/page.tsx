@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useEffect, useState } from "react"
 import useSWR from "swr"
 import { Button } from "@/components/ui/button"
-import { BarChart3 } from "lucide-react"
+import { BarChart3, Users, TrendingUp, Plus, Search } from "lucide-react"
 
 interface DashboardStats {
   totalGroups: number;
@@ -260,20 +260,33 @@ function DashboardContent({ user, token }: { user: any; token: string }) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <p className="text-sm text-muted-foreground">Jump to important areas</p>
+              <CardTitle className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                  <Plus className="h-4 w-4 text-primary" />
+                </div>
+                Quick Actions
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">Jump to important areas and get started</p>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3">
-              <Button asChild variant="outline" className="h-16 flex-col gap-1">
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Button asChild variant="outline" className="h-20 flex-col gap-2 group hover:bg-primary/5 hover:border-primary/20 transition-all duration-200">
                 <a href="/groups">
-                  <div className="text-lg">📊</div>
-                  <span className="text-sm">Browse Groups</span>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">
+                    <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="text-center">
+                    <div className="text-sm font-medium">Browse Groups</div>
+                  </div>
                 </a>
               </Button>
-              <Button asChild variant="outline" className="h-16 flex-col gap-1">
+              <Button asChild variant="outline" className="h-20 flex-col gap-2 group hover:bg-primary/5 hover:border-primary/20 transition-all duration-200">
                 <a href="/bets">
-                  <div className="text-lg">💰</div>
-                  <span className="text-sm">My Bets</span>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30 group-hover:bg-green-200 dark:group-hover:bg-green-900/50 transition-colors">
+                    <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="text-center">
+                    <div className="text-sm font-medium">My Bets</div>
+                  </div>
                 </a>
               </Button>
             </CardContent>

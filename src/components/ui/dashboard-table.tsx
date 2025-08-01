@@ -12,7 +12,7 @@ import {
   flexRender,
   ColumnDef,
 } from "@tanstack/react-table"
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, TrendingUp, Users } from "lucide-react"
 
 interface BetRow {
   date: string;
@@ -120,9 +120,37 @@ export function DashboardTable({ data = [], loading = false }: DashboardTablePro
 						</TableRow>
 					) : table.getRowModel().rows.length === 0 ? (
 						<TableRow>
-							<TableCell colSpan={columns.length} className="text-center text-muted-foreground">
-                {data.length === 0 ? "No bets found. Start betting to see your activity here!" : "No results found."}
-              </TableCell>
+							<TableCell colSpan={columns.length} className="h-32">
+								{data.length === 0 ? (
+									<div className="flex flex-col items-center justify-center text-center py-8 px-4">
+										<div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted/50 mb-4">
+											<TrendingUp className="h-8 w-8 text-muted-foreground" />
+										</div>
+										<h3 className="text-lg font-semibold mb-2">No bets yet</h3>
+										<p className="text-muted-foreground mb-6 max-w-sm">
+											Start your betting journey by joining a group and placing your first bet!
+										</p>
+										<div className="flex flex-col sm:flex-row gap-2">
+											<Button asChild size="sm">
+												<a href="/groups">
+													<Users className="h-4 w-4 mr-2" />
+													Browse Groups
+												</a>
+											</Button>
+											<Button asChild variant="outline" size="sm">
+												<a href="/bets">View All Bets</a>
+											</Button>
+										</div>
+									</div>
+								) : (
+									<div className="flex flex-col items-center justify-center text-center py-8 px-4">
+										<div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50 mb-3">
+											<TrendingUp className="h-6 w-6 text-muted-foreground" />
+										</div>
+										<p className="text-muted-foreground">No results found for your search.</p>
+									</div>
+								)}
+							</TableCell>
 						</TableRow>
 					) : (
 						table.getRowModel().rows.map(row => (
