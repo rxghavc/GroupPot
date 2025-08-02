@@ -76,6 +76,11 @@ const betSchema = new mongoose.Schema({
     enum: ['single', 'multi'],
     default: 'single'
   },
+  multiVoteType: {
+    type: String,
+    enum: ['exact_match', 'partial_match'],
+    default: 'exact_match'
+  },
   winningOption: {
     type: Number,
     default: null

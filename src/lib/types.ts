@@ -53,6 +53,7 @@ export interface Bet {
   status: 'open' | 'closed' | 'settled' | 'pending';
   outcome?: string; // Winning option ID
   votingType: 'single' | 'multi';
+  multiVoteType?: 'exact_match' | 'partial_match'; // For multi votes: exact_match = Situation B, partial_match = Situation A
   minStake: number;
   maxStake: number;
   createdBy: string; // User ID

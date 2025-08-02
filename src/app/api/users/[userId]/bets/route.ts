@@ -94,7 +94,23 @@ export async function GET(
             const userOptionIds = userVotes.map((v: any) => v.optionId).sort();
             const isWinner = userOptionIds.length === winningOptionIds.length && 
                              userOptionIds.every((id: string) => winningOptionIds.includes(id));
-            result = isWinner ? 'won' : 'lost';
+            
+            if (isWinner) {
+              result = 'won';
+              // Will calculate payout below
+            } else {
+              // Check if user has partial match (some winning options)
+              const userWinningOptions = userVotes.filter((v: any) => 
+                winningOptionIds.includes(v.optionId)
+              );
+              
+              if (userWinningOptions.length > 0 && bet.multiVoteType === 'partial_match') {
+                result = 'won'; // Partial win
+                // Will calculate payout below
+              } else {
+                result = 'lost';
+              }
+            }
           }
         } else {
           // Single vote logic - check for refund first
@@ -123,43 +139,89 @@ export async function GET(
           
           if (bet.votingType === 'multi') {
             // Multi-vote payout calculation
-            // Group all votes by user
-            const votesByUser = new Map();
-            allBetVotes.forEach((vote: any) => {
-              const userId = vote.userId.toString();
-              if (!votesByUser.has(userId)) {
-                votesByUser.set(userId, []);
-              }
-              votesByUser.get(userId).push(vote);
-            });
-
-            const winningOptionIndices = bet.winningOptions || [];
-            const winningOptionIds = winningOptionIndices.map((index: number) => 
-              bet.options[index]._id.toString()
-            ).sort();
-
-            let totalWinningStakes = 0;
-            let totalLosingStakes = 0;
-            
-            votesByUser.forEach((userBetVotes: any, userId: string) => {
-              const userOptionIds = userBetVotes.map((vote: any) => vote.optionId.toString()).sort();
-              const totalUserStake = userBetVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
+            if (bet.multiVoteType === 'partial_match') {
+              // Partial match calculation - use stake-splitting approach
+              const winningOptionIndices = bet.winningOptions || [];
+              const winningOptionIds = winningOptionIndices.map((index: number) => 
+                bet.options[index]._id.toString()
+              );
               
-              const isWinner = userOptionIds.length === winningOptionIds.length && 
-                               userOptionIds.every((id: string) => winningOptionIds.includes(id));
+              // Calculate user's winning stake (only from winning options)
+              const userWinningStake = userVotes
+                .filter((v: any) => winningOptionIds.includes(v.optionId))
+                .reduce((sum: number, v: any) => sum + v.stake, 0);
               
-              if (isWinner) {
-                totalWinningStakes += totalUserStake;
-              } else {
-                totalLosingStakes += totalUserStake;
-              }
-            });
+              // Calculate total winning stakes and losing stakes across all users
+              let totalWinningStakes = 0;
+              let totalLosingStakes = 0;
+              
+              // Group all votes by user
+              const votesByUser = new Map();
+              allBetVotes.forEach((vote: any) => {
+                const userId = vote.userId.toString();
+                if (!votesByUser.has(userId)) {
+                  votesByUser.set(userId, []);
+                }
+                votesByUser.get(userId).push(vote);
+              });
+              
+              votesByUser.forEach((userBetVotes: any) => {
+                const userWinningVotes = userBetVotes.filter((vote: any) => 
+                  winningOptionIds.includes(vote.optionId.toString())
+                );
+                const userLosingVotes = userBetVotes.filter((vote: any) => 
+                  !winningOptionIds.includes(vote.optionId.toString())
+                );
+                
+                totalWinningStakes += userWinningVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
+                totalLosingStakes += userLosingVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
+              });
+              
+              // Calculate proportional share of losing stakes
+              const proportionalShare = totalWinningStakes > 0 ? 
+                (userWinningStake / totalWinningStakes) * totalLosingStakes : 0;
+              
+              payout = userWinningStake + proportionalShare;
+            } else {
+              // Exact match calculation (existing logic)
+              // Group all votes by user
+              const votesByUser = new Map();
+              allBetVotes.forEach((vote: any) => {
+                const userId = vote.userId.toString();
+                if (!votesByUser.has(userId)) {
+                  votesByUser.set(userId, []);
+                }
+                votesByUser.get(userId).push(vote);
+              });
 
-            // Calculate this user's total stake and payout
-            const userTotalStake = userVotes.reduce((sum: number, v: any) => sum + v.stake, 0);
-            const proportionalShare = totalWinningStakes > 0 ? 
-              (userTotalStake / totalWinningStakes) * totalLosingStakes : 0;
-            payout = userTotalStake + proportionalShare;
+              const winningOptionIndices = bet.winningOptions || [];
+              const winningOptionIds = winningOptionIndices.map((index: number) => 
+                bet.options[index]._id.toString()
+              ).sort();
+
+              let totalWinningStakes = 0;
+              let totalLosingStakes = 0;
+              
+              votesByUser.forEach((userBetVotes: any, userId: string) => {
+                const userOptionIds = userBetVotes.map((vote: any) => vote.optionId.toString()).sort();
+                const totalUserStake = userBetVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
+                
+                const isWinner = userOptionIds.length === winningOptionIds.length && 
+                                 userOptionIds.every((id: string) => winningOptionIds.includes(id));
+                
+                if (isWinner) {
+                  totalWinningStakes += totalUserStake;
+                } else {
+                  totalLosingStakes += totalUserStake;
+                }
+              });
+
+              // Calculate this user's total stake and payout
+              const userTotalStake = userVotes.reduce((sum: number, v: any) => sum + v.stake, 0);
+              const proportionalShare = totalWinningStakes > 0 ? 
+                (userTotalStake / totalWinningStakes) * totalLosingStakes : 0;
+              payout = userTotalStake + proportionalShare;
+            }
           } else {
             // Single vote payout calculation (existing logic)
             const allVotesByOption = new Map();
@@ -190,8 +252,8 @@ export async function GET(
             });
 
             // Calculate total losing stakes and winning stakes
-            const totalLosingStakes = losingVotes.reduce((sum, vote) => sum + vote.stake, 0);
-            const totalWinningStakes = winningVotes.reduce((sum, vote) => sum + vote.stake, 0);
+            const totalLosingStakes = losingVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
+            const totalWinningStakes = winningVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
 
             // Calculate payout for this user's winning votes
             payout = userVotes

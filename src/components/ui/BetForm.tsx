@@ -28,6 +28,7 @@ interface BetFormProps {
     minStake: number;
     maxStake: number;
     votingType: 'single' | 'multi';
+    multiVoteType?: 'exact_match' | 'partial_match';
   }) => void;
   onCancel: () => void;
 }
@@ -40,6 +41,7 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, open, onSubmit,
   const [minStake, setMinStake] = useState(Math.max(1, groupMinStake));
   const [maxStake, setMaxStake] = useState(Math.max(1, groupMaxStake));
   const [votingType, setVotingType] = useState<'single' | 'multi'>('single');
+  const [multiVoteType, setMultiVoteType] = useState<'exact_match' | 'partial_match'>('exact_match');
 
   // Reset form when dialog closes
   function resetForm() {
@@ -50,6 +52,7 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, open, onSubmit,
     setMinStake(Math.max(1, groupMinStake));
     setMaxStake(Math.max(1, groupMaxStake));
     setVotingType('single');
+    setMultiVoteType('exact_match');
   }
 
   // Reset form when dialog opens
@@ -116,6 +119,7 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, open, onSubmit,
       minStake,
       maxStake,
       votingType,
+      multiVoteType: votingType === 'multi' ? multiVoteType : undefined,
     });
 
     // Reset form after submission
@@ -236,10 +240,38 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, open, onSubmit,
                 <p className="text-xs text-muted-foreground mt-1">
                   {votingType === 'single' 
                     ? 'Members can pick only one option' 
-                    : 'Members can pick multiple options. All selected options must win for payout.'
+                    : 'Members can pick multiple options'
                   }
                 </p>
               </div>
+
+              {/* Multi-vote sub-type selection */}
+              {votingType === 'multi' && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">Multi-Vote Rules *</label>
+                  <ToggleGroup 
+                    type="single" 
+                    value={multiVoteType} 
+                    onValueChange={(value) => value && setMultiVoteType(value as 'exact_match' | 'partial_match')}
+                    className="justify-start"
+                  >
+                    <ToggleGroupItem value="exact_match" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                      All-or-Nothing
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="partial_match" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                      Partial Match
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                  <div className="mt-2 p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground">
+                      {multiVoteType === 'exact_match' 
+                        ? '🎯 All-or-Nothing: Users must vote on ALL winning options (and no others) to win.' 
+                        : '🎲 Partial Match: Users vote on multiple options, but only ONE option wins.'
+                      }
+                    </p>
+                  </div>
+                </div>
+              )}
               
               <div>
                 <label className="block text-sm font-medium mb-2">Options *</label>

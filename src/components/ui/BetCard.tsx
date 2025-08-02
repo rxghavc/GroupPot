@@ -241,6 +241,11 @@ export function BetCard({
             <Badge className={getStatusColor()}>
               {getStatusText()}
             </Badge>
+            {bet.votingType === 'multi' && (
+              <Badge variant="outline" className={`text-xs ${bet.multiVoteType === 'partial_match' ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'}`}>
+                {bet.multiVoteType === 'partial_match' ? 'Partial Match' : 'Exact Match'}
+              </Badge>
+            )}
             {isModerator && bet.status === 'open' && !isEditing && (
               <Button
                 variant="ghost"
@@ -379,7 +384,10 @@ export function BetCard({
                     </span>
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">
-                    You need ALL selected options to win to get your stake back plus winnings.
+                    {bet.multiVoteType === 'partial_match' 
+                      ? 'Your stake was split across selected options. You win based on the portion on the winning option.'
+                      : 'You need ALL selected options to win to get your stake back plus winnings.'
+                    }
                   </div>
                 </div>
               </div>
@@ -391,7 +399,15 @@ export function BetCard({
         {/* Multi-vote user combinations - Show for multi-vote bets only */}
         {bet.votingType === 'multi' && getTotalVotes() > 0 && (
           <div className="space-y-2">
-            <h4 className="font-medium">User Vote Combinations:</h4>
+            <h4 className="font-medium">
+              User Vote Combinations:
+              <span className="text-xs text-muted-foreground ml-2 font-normal">
+                {bet.multiVoteType === 'partial_match' 
+                  ? '(Stakes split across options)'
+                  : '(Must match ALL to win)'
+                }
+              </span>
+            </h4>
             <div className="bg-blue-50 rounded-lg p-3">
               {(() => {
                 // Collect all users and their votes across all options
@@ -497,6 +513,7 @@ export function BetCard({
               minStake={bet.minStake}
               maxStake={bet.maxStake}
               votingType={bet.votingType || 'single'}
+              multiVoteType={bet.multiVoteType}
               onSubmit={handleVote}
               onCancel={() => setShowVoteForm(false)}
               userVote={userVote}

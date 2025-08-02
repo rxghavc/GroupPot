@@ -238,6 +238,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
     minStake: number;
     maxStake: number;
     votingType: 'single' | 'multi';
+    multiVoteType?: 'exact_match' | 'partial_match';
   }) {
     if (!groupId) return;
     
@@ -400,14 +401,20 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   const handleSettleConfirmed = async () => {
     if (!pendingSettleBet) return;
     
-    const optionsToSettle = pendingSettleBet.votingType === 'multi' 
-      ? pendingSettleOptions
-      : [pendingSettleOption].filter(Boolean);
+    let optionsToSettle: string[];
+    
+    if (pendingSettleBet.votingType === 'multi' && pendingSettleBet.multiVoteType === 'exact_match') {
+      // Exact match: Use multiple options
+      optionsToSettle = pendingSettleOptions;
+    } else {
+      // Single vote or partial match: Use single option
+      optionsToSettle = [pendingSettleOption].filter(Boolean);
+    }
     
     if (optionsToSettle.length === 0) return;
     
     setSettleDialogOpen(false);
-    await handleSettle(pendingSettleBet.votingType === 'multi' ? pendingSettleOptions : pendingSettleOption!);
+    await handleSettle(optionsToSettle.length > 1 ? optionsToSettle : optionsToSettle[0]);
     setPendingSettleOption(null);
     setPendingSettleOptions([]);
     setPendingSettleBet(null);
@@ -1181,92 +1188,136 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
 
       {/* Bet Results Dialog */}
       <Dialog open={showResultsDialog} onOpenChange={setShowResultsDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-6">
+            <DialogTitle className="text-2xl font-bold">
               {selectedBetResult?.bet.title} - Results
             </DialogTitle>
           </DialogHeader>
-          {selectedBetResult && (
-            <PayoutTable 
-              bet={selectedBetResult.bet} 
-              result={selectedBetResult.result} 
-            />
-          )}
+          <div className="pr-2">
+            {selectedBetResult && (
+              <PayoutTable 
+                bet={selectedBetResult.bet} 
+                result={selectedBetResult.result} 
+              />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* Settle Confirmation Dialog */}
       <AlertDialog open={settleDialogOpen} onOpenChange={setSettleDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Settle Bet: {pendingSettleBet?.title}</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-amber-500" />
+              Settle Bet
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingSettleBet?.votingType === 'multi' 
-                ? 'Select all winning options for this multi-vote bet. Users must have voted on ALL selected options (and only those options) to win.'
-                : 'Select the winning option for this bet. This action cannot be undone and will calculate payouts for all participants.'
-              }
+              <div className="space-y-2">
+                <div className="font-medium text-foreground">{pendingSettleBet?.title}</div>
+                <div className="text-sm">
+                  {pendingSettleBet?.votingType === 'multi' 
+                    ? pendingSettleBet?.multiVoteType === 'partial_match'
+                      ? 'Select the single winning option for this partial-match bet.'
+                      : 'Select all winning options for this all-or-nothing bet.'
+                    : 'Select the winning option. This will calculate payouts for all participants.'
+                  }
+                </div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
+          
           {pendingSettleBet && (
-            <div className="my-4">
-              <label className="block text-sm font-medium mb-2">
-                {pendingSettleBet.votingType === 'multi' 
-                  ? 'Select Winning Options (check all that apply):'
-                  : 'Select Winning Option:'
-                }
-              </label>
-              <div className="space-y-2">
-                {pendingSettleBet.options.map((option) => (
-                  <label key={option.id} className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type={pendingSettleBet.votingType === 'multi' ? 'checkbox' : 'radio'}
-                      name={pendingSettleBet.votingType === 'multi' ? 'winningOptions' : 'winningOption'}
-                      value={option.id}
-                      checked={pendingSettleBet.votingType === 'multi' 
-                        ? pendingSettleOptions.includes(option.id)
-                        : pendingSettleOption === option.id
-                      }
-                      onChange={(e) => {
-                        if (pendingSettleBet.votingType === 'multi') {
-                          if (e.target.checked) {
-                            setPendingSettleOptions(prev => [...prev, option.id]);
+            <div className="space-y-4">
+              <div className="space-y-3">
+                {pendingSettleBet.options.map((option) => {
+                  const isSelected = pendingSettleBet.votingType === 'multi' && pendingSettleBet.multiVoteType === 'exact_match'
+                    ? pendingSettleOptions.includes(option.id)
+                    : pendingSettleOption === option.id;
+                  
+                  return (
+                    <label 
+                      key={option.id} 
+                      className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all hover:bg-muted/50 ${
+                        isSelected 
+                          ? 'border-primary bg-primary/5' 
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <input
+                        type={pendingSettleBet.votingType === 'multi' && pendingSettleBet.multiVoteType === 'exact_match' ? 'checkbox' : 'radio'}
+                        name={pendingSettleBet.votingType === 'multi' && pendingSettleBet.multiVoteType === 'exact_match' ? 'winningOptions' : 'winningOption'}
+                        value={option.id}
+                        checked={isSelected}
+                        onChange={(e) => {
+                          if (pendingSettleBet.votingType === 'multi' && pendingSettleBet.multiVoteType === 'exact_match') {
+                            // Exact match: Allow multiple selections (checkboxes)
+                            if (e.target.checked) {
+                              setPendingSettleOptions(prev => [...prev, option.id]);
+                            } else {
+                              setPendingSettleOptions(prev => prev.filter(id => id !== option.id));
+                            }
                           } else {
-                            setPendingSettleOptions(prev => prev.filter(id => id !== option.id));
+                            // Single vote or partial match: Only one selection (radio)
+                            setPendingSettleOption(e.target.value);
+                            setPendingSettleOptions([]); // Clear multi-selections for consistency
                           }
-                        } else {
-                          setPendingSettleOption(e.target.value);
-                        }
-                      }}
-                      className="text-primary"
-                    />
-                    <span className="text-sm">{option.text}</span>
-                  </label>
-                ))}
+                        }}
+                        className="sr-only"
+                      />
+                      <div className={`flex items-center justify-center w-5 h-5 rounded-full border-2 mr-3 transition-colors ${
+                        isSelected 
+                          ? 'border-primary bg-primary' 
+                          : 'border-muted-foreground'
+                      }`}>
+                        {isSelected && (
+                          <div className="w-2 h-2 bg-primary-foreground rounded-full" />
+                        )}
+                      </div>
+                      <span className="font-medium flex-1">{option.text}</span>
+                      <div className="text-sm text-muted-foreground">
+                        {option.votesCount || 0} vote{(option.votesCount || 0) !== 1 ? 's' : ''}
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
+              
               {pendingSettleBet.votingType === 'multi' && (
-                <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-xs text-blue-700">
-                    <strong>Multi-vote rules:</strong> Only users who voted on ALL selected options (and no others) will win. 
-                    For example, if you select options A and B, users who voted on A+B win, but users who voted on A+B+C or just A will lose.
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    {pendingSettleBet.multiVoteType === 'partial_match' ? (
+                      <>
+                        <strong>Partial Match rule:</strong> Users who voted on the winning option will receive payouts based on their stake portion on that option. Stakes on non-winning options will be redistributed to winners.
+                      </>
+                    ) : (
+                      <>
+                        <strong>All-or-Nothing rule:</strong> Users must have voted on ALL selected options (and no others) to win.
+                      </>
+                    )}
                   </p>
                 </div>
               )}
             </div>
           )}
+          
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => {
               setPendingSettleOption(null);
               setPendingSettleOptions([]);
               setPendingSettleBet(null);
-            }}>Cancel</AlertDialogCancel>
+            }}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleSettleConfirmed} 
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={pendingSettleBet?.votingType === 'multi' 
-                ? pendingSettleOptions.length === 0
-                : !pendingSettleOption
+              disabled={
+                pendingSettleBet?.votingType === 'multi' && pendingSettleBet?.multiVoteType === 'exact_match'
+                  ? pendingSettleOptions.length === 0
+                  : !pendingSettleOption
               }
+              className="bg-amber-600 hover:bg-amber-700 text-white"
             >
               Settle Bet
             </AlertDialogAction>
