@@ -52,31 +52,72 @@ export async function GET(
 
       let result = 'pending';
       let payout = 0;
+      let isRefund = false;
       
       if (bet.status === 'settled') {
+        // Check if this is a refund scenario first
         if (bet.votingType === 'multi') {
-          // Multi-vote logic: user must have voted on ALL winning options and ONLY those options
+          // For multi-vote, check if there are any winners at all
           const winningOptionIndices = bet.winningOptions || [];
           const winningOptionIds = winningOptionIndices.map((index: number) => 
             bet.options[index]._id.toString()
           ).sort();
           
-          const userOptionIds = userVotes.map((v: any) => v.optionId).sort();
-          
-          // Check if user voted on exactly the winning options (no more, no less)
-          const isWinner = userOptionIds.length === winningOptionIds.length && 
-                           userOptionIds.every((id: string) => winningOptionIds.includes(id));
-          
-          result = isWinner ? 'won' : 'lost';
+          // Get all votes for this bet to check if anyone won
+          const allBetVotes = votes.filter((v: any) => v.betId.toString() === bet._id.toString());
+          const votesByUser = new Map();
+          allBetVotes.forEach((vote: any) => {
+            const userId = vote.userId.toString();
+            if (!votesByUser.has(userId)) {
+              votesByUser.set(userId, []);
+            }
+            votesByUser.get(userId).push(vote);
+          });
+
+          let hasAnyWinners = false;
+          votesByUser.forEach((userBetVotes: any) => {
+            const userOptionIds = userBetVotes.map((vote: any) => vote.optionId.toString()).sort();
+            const isWinner = userOptionIds.length === winningOptionIds.length && 
+                             userOptionIds.every((id: string) => winningOptionIds.includes(id));
+            if (isWinner) {
+              hasAnyWinners = true;
+            }
+          });
+
+          if (!hasAnyWinners) {
+            // No winners - refund scenario
+            isRefund = true;
+            result = 'refund';
+            payout = userVotes.reduce((sum: number, v: any) => sum + v.stake, 0);
+          } else {
+            // Normal multi-vote logic
+            const userOptionIds = userVotes.map((v: any) => v.optionId).sort();
+            const isWinner = userOptionIds.length === winningOptionIds.length && 
+                             userOptionIds.every((id: string) => winningOptionIds.includes(id));
+            result = isWinner ? 'won' : 'lost';
+          }
         } else {
-          // Single vote logic (existing)
+          // Single vote logic - check for refund first
           const winningOptionIndex = bet.winningOption;
           const winningOptionId = bet.options[winningOptionIndex]?._id?.toString();
-          const hasWinningVote = userVotes.some((v: any) => v.optionId === winningOptionId);
-          result = hasWinningVote ? 'won' : 'lost';
+          
+          // Check if anyone voted on the winning option
+          const allBetVotes = votes.filter((v: any) => v.betId.toString() === bet._id.toString());
+          const hasWinnersOnOption = allBetVotes.some((v: any) => v.optionId.toString() === winningOptionId);
+          
+          if (!hasWinnersOnOption) {
+            // No one voted on winning option - refund scenario
+            isRefund = true;
+            result = 'refund';
+            payout = userVotes.reduce((sum: number, v: any) => sum + v.stake, 0);
+          } else {
+            // Normal single vote logic
+            const hasWinningVote = userVotes.some((v: any) => v.optionId === winningOptionId);
+            result = hasWinningVote ? 'won' : 'lost';
+          }
         }
         
-        if (result === 'won') {
+        if (result === 'won' && !isRefund) {
           // Calculate actual payout using pool-based system
           const allBetVotes = votes.filter((v: any) => v.betId.toString() === bet._id.toString());
           
@@ -173,7 +214,8 @@ export async function GET(
         userVotes,
         payout: payout.toFixed(2),
         status: bet.status,
-        deadline: bet.deadline
+        deadline: bet.deadline,
+        isRefund
       };
     });
 

@@ -346,6 +346,48 @@ export function BetCard({
           })}
         </div>
 
+        {/* Current User's Vote Summary for Multi-vote bets */}
+        {bet.votingType === 'multi' && user && (() => {
+          // Collect user's votes across all options
+          const userVotes: Array<{ optionText: string; stake: number }> = [];
+          let userTotalStake = 0;
+          
+          bet.options.forEach(option => {
+            if (option.votes) {
+              const userVote = option.votes.find(v => v.userId === user.id);
+              if (userVote) {
+                userVotes.push({ optionText: option.text, stake: userVote.stake });
+                userTotalStake += userVote.stake;
+              }
+            }
+          });
+          
+          if (userVotes.length > 0) {
+            return (
+              <div className="space-y-2">
+                <h4 className="font-medium">Your Vote:</h4>
+                <div className="bg-primary/5 rounded-lg p-3 border border-primary/20">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">You voted on:</span>
+                      <span className="font-mono text-sm bg-primary/10 px-2 py-1 rounded">
+                        {userVotes.map(v => v.optionText).join(' + ')}
+                      </span>
+                    </div>
+                    <span className="font-semibold text-sm">
+                      Total: £{userTotalStake.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    You need ALL selected options to win to get your stake back plus winnings.
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
+
         {/* Multi-vote user combinations - Show for multi-vote bets only */}
         {bet.votingType === 'multi' && getTotalVotes() > 0 && (
           <div className="space-y-2">
@@ -426,12 +468,20 @@ export function BetCard({
               <div className="text-sm">
                 <span className="font-medium">Total Pool:</span> £{result.totalPool.toFixed(2)}
               </div>
-              <div className="text-sm">
-                <span className="font-medium">Winners:</span> {result.winners.length}
-              </div>
-              <div className="text-sm">
-                <span className="font-medium">Losers:</span> {result.losers.length}
-              </div>
+              {result.isRefund ? (
+                <div className="text-sm">
+                  <span className="font-medium">Stakes Refunded:</span> {result.winners.length} participant{result.winners.length !== 1 ? 's' : ''}
+                </div>
+              ) : (
+                <>
+                  <div className="text-sm">
+                    <span className="font-medium">Winners:</span> {result.winners.length}
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-medium">Losers:</span> {result.losers.length}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}

@@ -127,7 +127,7 @@ export function VoteForm({ betId, options, minStake, maxStake, votingType, onSub
           <div>
             <label className="block text-sm font-medium mb-1">
               Your Stake (£{Math.max(1, minStake)} - £{Math.max(1, maxStake)})
-              {votingType === 'multi' && <span className="text-xs text-muted-foreground block">This total stake will be split across your selected options</span>}
+              {votingType === 'multi' && <span className="text-xs text-muted-foreground block">Total stake - you must get ALL selected options right to win</span>}
             </label>
             <Input
               type="number"
@@ -153,7 +153,7 @@ export function VoteForm({ betId, options, minStake, maxStake, votingType, onSub
               You can stake between £{Math.max(1, minStake)} and £{Math.max(1, maxStake)}
               {votingType === 'multi' && selectedOptions.length > 0 && (
                 <span className="block mt-1">
-                  Stake per option: £{(stake / selectedOptions.length).toFixed(2)} ({selectedOptions.length} option{selectedOptions.length !== 1 ? 's' : ''} selected)
+                  {selectedOptions.length} option{selectedOptions.length !== 1 ? 's' : ''} selected - you need ALL to be correct to win
                 </span>
               )}
             </p>
