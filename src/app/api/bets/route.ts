@@ -76,7 +76,8 @@ export async function POST(req: NextRequest) {
       deadline, 
       minStake, 
       maxStake,
-      votingType = 'single'
+      votingType = 'single',
+      multiVoteType = 'exact_match'
     } = body;
 
     if (!groupId || !title || !description || !options || !deadline) {
@@ -138,6 +139,7 @@ export async function POST(req: NextRequest) {
       deadline: new Date(deadline),
       status: 'open',
       votingType,
+      multiVoteType: votingType === 'multi' ? multiVoteType : undefined,
       minStake: Math.max(1, minStake || group.minStake),
       maxStake: Math.max(1, maxStake || group.maxStake),
       createdBy: decoded.userId,

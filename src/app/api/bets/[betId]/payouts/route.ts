@@ -38,7 +38,7 @@ export async function GET(
     }
 
     // Fetch all votes for this bet from the Vote collection
-    const allVotes = await Vote.find({ betId: betId });
+    const allVotes = await Vote.find({ betId: bet._id });
 
     // Group votes by option
     const votesByOption = new Map();
@@ -64,7 +64,7 @@ export async function GET(
     let result;
 
     if (bet.votingType === 'multi' && bet.winningOptions && bet.winningOptions.length > 0) {
-      // Multi-vote logic: Users must have voted on ALL winning options and ONLY those options
+      // Multi-vote logic: Different handling based on multiVoteType
       const winningOptionIds = bet.winningOptions.map((optionIndex: number) => 
         bet.options[optionIndex]._id.toString()
       ).sort();
@@ -82,31 +82,90 @@ export async function GET(
       const winners: any[] = [];
       const losers: any[] = [];
 
-      // Determine winners and losers
-      votesByUser.forEach((userVotes, userId) => {
-        const userOptionIds = userVotes.map((vote: any) => vote.optionId.toString()).sort();
-        const totalUserStake = userVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
+      if (bet.multiVoteType === 'partial_match') {
+        // Partial Match: Users vote on multiple options, but only ONE option wins
+        // Stakes are split across chosen options, only the portion on winning option counts
+        const winningOptionId = winningOptionIds[0]; // Partial match can only have one winner
         
-        // Check if user voted on exactly the winning options (no more, no less)
-        const isWinner = userOptionIds.length === winningOptionIds.length && 
-                         userOptionIds.every((id: string) => winningOptionIds.includes(id));
-        
-        const userRecord = {
-          userId: userId,
-          username: userVotes[0].username,
-          stake: totalUserStake
-        };
+        // For each user, check if they voted on the winning option
+        votesByUser.forEach((userVotes, userId) => {
+          const userTotalStake = userVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
+          const winningVote = userVotes.find((vote: any) => vote.optionId.toString() === winningOptionId);
+          
+          if (winningVote) {
+            // User has a vote on the winning option
+            // In partial match, stakes are distributed equally across options chosen
+            const userOptionCount = userVotes.length;
+            const stakePerOption = userTotalStake / userOptionCount;
+            
+            // User wins based only on their stake portion on the winning option
+            winners.push({
+              userId: userId,
+              username: userVotes[0].username,
+              stake: stakePerOption // Only the portion on the winning option
+            });
+          } else {
+            // User didn't vote on winning option - all stake goes to losers
+            losers.push({
+              userId: userId,
+              username: userVotes[0].username,
+              stake: userTotalStake
+            });
+          }
+        });
+      } else {
+        // Exact Match (default): Users must vote on ALL winning options and ONLY those options
+        votesByUser.forEach((userVotes, userId) => {
+          const userOptionIds = userVotes.map((vote: any) => vote.optionId.toString()).sort();
+          const totalUserStake = userVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
+          
+          // Check if user voted on exactly the winning options (no more, no less)
+          const isWinner = userOptionIds.length === winningOptionIds.length && 
+                           userOptionIds.every((id: string) => winningOptionIds.includes(id));
+          
+          const userRecord = {
+            userId: userId,
+            username: userVotes[0].username,
+            stake: totalUserStake
+          };
 
-        if (isWinner) {
-          winners.push(userRecord);
-        } else {
-          losers.push(userRecord);
-        }
-      });
+          if (isWinner) {
+            winners.push(userRecord);
+          } else {
+            losers.push(userRecord);
+          }
+        });
+      }
 
       // Calculate payouts
-      const totalLosingStakes = losers.reduce((sum, loser) => sum + loser.stake, 0);
-      const totalWinningStakes = winners.reduce((sum, winner) => sum + winner.stake, 0);
+      let totalLosingStakes, totalWinningStakes;
+      
+      if (bet.multiVoteType === 'partial_match') {
+        // For partial match, calculate losing stakes including non-winning portions from winners
+        const totalLosingStakesFromLosers = losers.reduce((sum, loser) => sum + loser.stake, 0);
+        const additionalLosingStakes = winners.reduce((sum, winner) => {
+          const userVotes = votesByUser.get(winner.userId);
+          const userTotalStake = userVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
+          const userOptionCount = userVotes.length;
+          const stakePerOption = userTotalStake / userOptionCount;
+          return sum + (userTotalStake - stakePerOption); // Non-winning portion
+        }, 0);
+        
+        totalLosingStakes = totalLosingStakesFromLosers + additionalLosingStakes;
+        totalWinningStakes = winners.reduce((sum, winner) => sum + winner.stake, 0);
+        
+        console.log('Payouts API - Partial match calculation:');
+        console.log('Winners:', winners);
+        console.log('Losers:', losers);
+        console.log('Total losing stakes from losers:', totalLosingStakesFromLosers);
+        console.log('Additional losing stakes from winners:', additionalLosingStakes);
+        console.log('Total losing stakes:', totalLosingStakes);
+        console.log('Total winning stakes:', totalWinningStakes);
+      } else {
+        // For exact match, use simple calculation
+        totalLosingStakes = losers.reduce((sum, loser) => sum + loser.stake, 0);
+        totalWinningStakes = winners.reduce((sum, winner) => sum + winner.stake, 0);
+      }
 
       // Check if there are no winners (refund scenario)
       if (winners.length === 0) {
@@ -124,6 +183,24 @@ export async function GET(
           isRefund: true
         };
       } else {
+        // Calculate additional info for partial match
+        const betTypeInfo = bet.multiVoteType === 'partial_match' ? {
+          betType: 'partial_match',
+          explanation: 'In partial match betting, your stake is split equally across all options you choose. You win based only on the portion placed on the winning option.',
+          totalLosingStakesFromLosers: losers.reduce((sum, loser) => sum + loser.stake, 0),
+          additionalLosingStakesFromWinners: bet.multiVoteType === 'partial_match' ? 
+            winners.reduce((sum, winner) => {
+              const userVotes = votesByUser.get(winner.userId);
+              const userTotalStake = userVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
+              const userOptionCount = userVotes.length;
+              const stakePerOption = userTotalStake / userOptionCount;
+              return sum + (userTotalStake - stakePerOption);
+            }, 0) : 0
+        } : {
+          betType: 'exact_match',
+          explanation: 'In exact match betting, you must vote on ALL winning options and ONLY those options to win.'
+        };
+
         result = {
           totalPool,
           winningOptionIds: winningOptionIds,
@@ -133,12 +210,23 @@ export async function GET(
               (winner.stake / totalWinningStakes) * totalLosingStakes : 0;
             const payout = winner.stake + proportionalShare;
             
-            return {
+            // Add breakdown for partial match winners
+            const winnerInfo = bet.multiVoteType === 'partial_match' ? {
+              userId: winner.userId,
+              username: winner.username,
+              stake: winner.stake,
+              payout: payout,
+              winningPortion: winner.stake,
+              shareOfLosingPool: proportionalShare,
+              totalOriginalStake: votesByUser.get(winner.userId).reduce((sum: number, vote: any) => sum + vote.stake, 0)
+            } : {
               userId: winner.userId,
               username: winner.username,
               stake: winner.stake,
               payout: payout
             };
+            
+            return winnerInfo;
           }),
           losers: losers.map((loser: any) => ({
             userId: loser.userId,
@@ -146,7 +234,8 @@ export async function GET(
             stake: loser.stake,
             loss: loser.stake
           })),
-          isRefund: false
+          isRefund: false,
+          ...betTypeInfo
         };
       }
     } else {

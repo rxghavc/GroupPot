@@ -457,7 +457,7 @@ function BetsContent({ user, token }: { user: any; token: string }) {
                       </Badge>
                       <div className="flex items-center gap-2">
                         <Badge className="bg-green-100 text-green-800">Settled</Badge>
-                        {bet.isRefund && <Badge className="bg-blue-100 text-blue-800">Refunded</Badge>}
+                        {bet.isRefund && bet.result === "refund" && <Badge className="bg-blue-100 text-blue-800">Refunded</Badge>}
                         {bet.result === "won" && <Trophy className="w-4 h-4 text-green-600" />}
                         {bet.result === "lost" && <XCircle className="w-4 h-4 text-red-600" />}
                         {bet.result === "refund" && <TrendingUp className="w-4 h-4 text-blue-600" />}

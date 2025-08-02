@@ -203,7 +203,7 @@ export async function DELETE(
     // For unsettled bets, refund participants by adding stakes back to their balances
     if (!isSettled) {
       // Get all votes for this bet to process refunds
-      const votes = await Vote.find({ betId: betId });
+      const votes = await Vote.find({ betId: bet._id });
       
       // Process refunds for each participant
       const refundPromises = votes.map(async (vote) => {
@@ -216,7 +216,7 @@ export async function DELETE(
     }
 
     // Delete all votes for this bet from the Vote collection
-    await Vote.deleteMany({ betId: betId });
+    await Vote.deleteMany({ betId: bet._id });
 
     // Delete the bet
     await Bet.findByIdAndDelete(betId);

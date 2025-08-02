@@ -12,6 +12,7 @@ interface VoteFormProps {
   minStake: number;
   maxStake: number;
   votingType: 'single' | 'multi';
+  multiVoteType?: 'exact_match' | 'partial_match';
   onSubmit: (voteData: { optionId: string; stake: number }) => void;
   onCancel: () => void;
   userVote?: { optionId: string; stake: number };
@@ -19,7 +20,7 @@ interface VoteFormProps {
   isExpired?: boolean;
 }
 
-export function VoteForm({ betId, options, minStake, maxStake, votingType, onSubmit, onCancel, userVote, canVote, isExpired }: VoteFormProps) {
+export function VoteForm({ betId, options, minStake, maxStake, votingType, multiVoteType, onSubmit, onCancel, userVote, canVote, isExpired }: VoteFormProps) {
   const [selectedOption, setSelectedOption] = useState(userVote?.optionId || "");
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [stake, setStake] = useState(userVote?.stake ?? Math.max(1, minStake));
@@ -94,7 +95,14 @@ export function VoteForm({ betId, options, minStake, maxStake, votingType, onSub
           <div>
             <label className="block text-sm font-medium mb-2">
               Select Option{votingType === 'multi' ? 's' : ''}
-              {votingType === 'multi' && <span className="text-xs text-muted-foreground ml-2">(You must get ALL selected options correct to win)</span>}
+              {votingType === 'multi' && (
+                <span className="text-xs text-muted-foreground ml-2">
+                  {multiVoteType === 'partial_match' 
+                    ? '(Your stake will be split across selected options)'
+                    : '(You must get ALL selected options correct to win)'
+                  }
+                </span>
+              )}
             </label>
             <div className="space-y-2">
               {options.map((option) => (
@@ -127,7 +135,14 @@ export function VoteForm({ betId, options, minStake, maxStake, votingType, onSub
           <div>
             <label className="block text-sm font-medium mb-1">
               Your Stake (£{Math.max(1, minStake)} - £{Math.max(1, maxStake)})
-              {votingType === 'multi' && <span className="text-xs text-muted-foreground block">Total stake - you must get ALL selected options right to win</span>}
+              {votingType === 'multi' && (
+                <span className="text-xs text-muted-foreground block">
+                  {multiVoteType === 'partial_match'
+                    ? 'Total stake - will be split across your selected options'
+                    : 'Total stake - you must get ALL selected options right to win'
+                  }
+                </span>
+              )}
             </label>
             <Input
               type="number"
@@ -153,7 +168,11 @@ export function VoteForm({ betId, options, minStake, maxStake, votingType, onSub
               You can stake between £{Math.max(1, minStake)} and £{Math.max(1, maxStake)}
               {votingType === 'multi' && selectedOptions.length > 0 && (
                 <span className="block mt-1">
-                  {selectedOptions.length} option{selectedOptions.length !== 1 ? 's' : ''} selected - you need ALL to be correct to win
+                  {selectedOptions.length} option{selectedOptions.length !== 1 ? 's' : ''} selected - {
+                    multiVoteType === 'partial_match'
+                      ? 'stake will be split equally between them'
+                      : 'you need ALL to be correct to win'
+                  }
                 </span>
               )}
             </p>
