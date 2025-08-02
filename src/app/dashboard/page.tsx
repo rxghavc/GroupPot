@@ -161,11 +161,22 @@ function DashboardContent({ user, token }: { user: any; token: string }) {
   const dashboardTableData = userBets 
     ? userBets.map((bet: any) => {
         const totalWager = bet.userVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
-        const statusMap: { [key: string]: string } = {
-          'won': 'Won',
-          'lost': 'Lost',
-          'pending': 'Open'
-        };
+        
+        // Determine status based on bet.status first, then bet.result for settled bets
+        let displayStatus = 'Open';
+        if (bet.status === 'settled') {
+          // For settled bets, show the user's result
+          const resultMap: { [key: string]: string } = {
+            'won': 'Won',
+            'lost': 'Lost',
+            'refund': 'Refunded'
+          };
+          displayStatus = resultMap[bet.result] || 'Settled';
+        } else if (bet.status === 'closed') {
+          displayStatus = 'Closed';
+        } else if (bet.status === 'open') {
+          displayStatus = 'Open';
+        }
         
         return {
           date: new Date(bet.deadline).toLocaleDateString('en-US', { 
@@ -176,8 +187,8 @@ function DashboardContent({ user, token }: { user: any; token: string }) {
           group: bet.groupName || 'Unknown',
           bet: bet.title || 'Unknown Bet',
           wager: totalWager,
-          payout: bet.result === 'won' ? parseFloat(bet.payout) : (bet.result === 'lost' ? 0 : totalWager),
-          status: statusMap[bet.result] || 'Open'
+          payout: bet.status === 'settled' ? parseFloat(bet.payout) : (bet.status === 'open' ? totalWager : 0),
+          status: displayStatus
         };
       })
     : [];
