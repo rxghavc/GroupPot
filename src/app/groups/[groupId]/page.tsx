@@ -408,7 +408,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
       optionsToSettle = pendingSettleOptions;
     } else {
       // Single vote or partial match: Use single option
-      optionsToSettle = [pendingSettleOption].filter(Boolean);
+      optionsToSettle = pendingSettleOption ? [pendingSettleOption] : [];
     }
     
     if (optionsToSettle.length === 0) return;
@@ -470,18 +470,25 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
         // Filter bets for this specific group
         const groupBets = userBets.filter((bet: any) => bet.groupId === groupId);
         
-        // Calculate profit/loss
+        // Calculate profit/loss using the accurate API data
         const totalStakes = groupBets.reduce((sum: number, bet: any) => 
           sum + bet.userVotes.reduce((voteSum: number, vote: any) => voteSum + vote.stake, 0), 0
         );
         
-        const totalPayouts = groupBets.reduce((sum: number, bet: any) => 
-          sum + (bet.status === 'settled' ? parseFloat(bet.payout) : 0), 0
-        );
+        const totalPayouts = groupBets.reduce((sum: number, bet: any) => {
+          // Only count payouts for settled bets, using the calculated payout from API
+          return sum + (bet.status === 'settled' ? parseFloat(bet.payout) : 0);
+        }, 0);
         
         const netProfit = totalPayouts - totalStakes;
-        const winRate = groupBets.filter((bet: any) => bet.status === 'settled' && bet.result !== 'refund').length > 0 
-          ? (groupBets.filter((bet: any) => bet.result === 'won').length / groupBets.filter((bet: any) => bet.status === 'settled' && bet.result !== 'refund').length) * 100 
+        
+        // Calculate win rate more accurately
+        const settledBets = groupBets.filter((bet: any) => bet.status === 'settled');
+        const settledNonRefundBets = settledBets.filter((bet: any) => bet.result !== 'refund');
+        const wonBets = settledBets.filter((bet: any) => bet.result === 'won');
+        
+        const winRate = settledNonRefundBets.length > 0 
+          ? (wonBets.length / settledNonRefundBets.length) * 100 
           : 0;
         
         return {
@@ -490,7 +497,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
           netProfit,
           winRate,
           totalBets: groupBets.length,
-          settledBets: groupBets.filter((bet: any) => bet.status === 'settled').length
+          settledBets: settledBets.length
         };
       }
     } catch (error) {
