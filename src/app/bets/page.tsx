@@ -26,6 +26,7 @@ interface UserBet {
   status: string;
   deadline: string;
   groupName: string;
+  isRefund?: boolean;
 }
 
 const fetcher = (url: string, token: string): Promise<UserBet[]> =>
@@ -164,7 +165,7 @@ function BetsContent({ user, token }: { user: any; token: string }) {
   );
   
   const totalWinnings = pastBets.reduce((sum, bet) => 
-    sum + (bet.result === "won" ? parseFloat(bet.payout) : 0), 0
+    sum + (bet.result === "won" ? parseFloat(bet.payout) : bet.isRefund ? parseFloat(bet.payout) : 0), 0
   );
   
   const totalLosses = pastBets.reduce((sum, bet) => 
@@ -176,20 +177,24 @@ function BetsContent({ user, token }: { user: any; token: string }) {
   );
   
   const netProfit = totalWinnings - totalPastStakes;
-  const winRate = pastBets.length > 0 ? (pastBets.filter(bet => bet.result === "won").length / pastBets.length) * 100 : 0;
+  const winRate = pastBets.filter(bet => bet.result !== 'refund').length > 0 ? (pastBets.filter(bet => bet.result === "won").length / pastBets.filter(bet => bet.result !== 'refund').length) * 100 : 0;
 
   // Chart data preparation
   const chartData = pastBets
     .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
     .map((bet, index) => {
       const stake = bet.userVotes.reduce((sum, vote) => sum + vote.stake, 0);
-      const profit = bet.result === "won" ? parseFloat(bet.payout) - stake : -stake;
+      const profit = bet.result === "won" 
+        ? parseFloat(bet.payout) - stake 
+        : bet.isRefund 
+          ? 0 
+          : -stake;
       
       return {
         bet: bet.title.substring(0, 15) + "...",
         profit: profit,
         stake: stake,
-        payout: bet.result === "won" ? parseFloat(bet.payout) : 0,
+        payout: bet.result === "won" || bet.isRefund ? parseFloat(bet.payout) : 0,
         date: new Date(bet.deadline).toLocaleDateString(),
         group: bet.groupName
       };
@@ -452,8 +457,10 @@ function BetsContent({ user, token }: { user: any; token: string }) {
                       </Badge>
                       <div className="flex items-center gap-2">
                         <Badge className="bg-green-100 text-green-800">Settled</Badge>
+                        {bet.isRefund && <Badge className="bg-blue-100 text-blue-800">Refunded</Badge>}
                         {bet.result === "won" && <Trophy className="w-4 h-4 text-green-600" />}
                         {bet.result === "lost" && <XCircle className="w-4 h-4 text-red-600" />}
+                        {bet.result === "refund" && <TrendingUp className="w-4 h-4 text-blue-600" />}
                       </div>
                     </div>
                   </CardHeader>
@@ -482,15 +489,27 @@ function BetsContent({ user, token }: { user: any; token: string }) {
                         <div className="flex justify-between items-center text-sm font-medium">
                           <span>Net:</span>
                           <span className={
-                            bet.result === "won" 
-                              ? "text-green-600" 
-                              : "text-red-600"
+                            bet.result === "refund" 
+                              ? "text-blue-600" 
+                              : bet.result === "won" 
+                                ? "text-green-600" 
+                                : "text-red-600"
                           }>
-                            {bet.result === "won" ? "+" : "-"}£{
-                              bet.result === "won" 
-                                ? (parseFloat(bet.payout) - bet.userVotes.reduce((sum, v) => sum + v.stake, 0)).toFixed(2)
-                                : bet.userVotes.reduce((sum, v) => sum + v.stake, 0).toFixed(2)
+                            {bet.result === "refund" 
+                              ? "±£0.00 (Refunded)"
+                              : bet.result === "won" 
+                                ? "+"
+                                : "-"
                             }
+                            {bet.result !== "refund" && (
+                              <>
+                                £{
+                                  bet.result === "won" 
+                                    ? (parseFloat(bet.payout) - bet.userVotes.reduce((sum, v) => sum + v.stake, 0)).toFixed(2)
+                                    : bet.userVotes.reduce((sum, v) => sum + v.stake, 0).toFixed(2)
+                                }
+                              </>
+                            )}
                           </span>
                         </div>
                       </div>

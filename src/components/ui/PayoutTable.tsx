@@ -52,7 +52,7 @@ export function PayoutTable({ bet, result }: PayoutTableProps) {
             </div>
             <div>
               <span className="font-medium">{isRefund ? 'Participants:' : 'Total Winners:'}</span>
-              <span className="ml-2">{result.winners.length}</span>
+              <span className="ml-2">{isRefund ? result.winners.length : result.winners.length}</span>
             </div>
           </div>
           {isRefund && (

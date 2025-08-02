@@ -114,15 +114,13 @@ export async function GET(
           totalPool,
           winningOptionIds: winningOptionIds,
           winningOptionTexts: bet.winningOptions.map((index: number) => bet.options[index].text),
-          winners: [],
-          losers: [],
-          // All users get refunded
-          refunds: Array.from(votesByUser.values()).map((userVotes: any) => ({
+          winners: Array.from(votesByUser.values()).map((userVotes: any) => ({
             userId: userVotes[0].userId,
             username: userVotes[0].username,
             stake: userVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0),
             payout: userVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0)
           })),
+          losers: [],
           isRefund: true
         };
       } else {
@@ -177,31 +175,51 @@ export async function GET(
       const totalLosingStakes = losingVotes.reduce((sum, vote) => sum + vote.stake, 0);
       const totalWinningStakes = winningVotes.reduce((sum, vote) => sum + vote.stake, 0);
 
-      result = {
-        totalPool,
-        winningOptionId: winningOption._id.toString(),
-        winningOptionText: winningOption.text,
-        winners: winningVotes.map((vote: any) => {
-          // Each winner gets their stake back plus a proportional share of losing stakes
-          const proportionalShare = totalWinningStakes > 0 ? 
-            (vote.stake / totalWinningStakes) * totalLosingStakes : 0;
-          const payout = vote.stake + proportionalShare;
-          
-          return {
+      // Check if there are no winners (refund scenario for single vote)
+      if (winningVotes.length === 0) {
+        // No one voted on the winning option - refund everyone
+        const allVotes = [...losingVotes];
+        
+        result = {
+          totalPool,
+          winningOptionId: winningOption._id.toString(),
+          winningOptionText: winningOption.text,
+          winners: allVotes.map((vote: any) => ({
             userId: vote.userId,
             username: vote.username,
             stake: vote.stake,
-            payout: payout
-          };
-        }),
-        losers: losingVotes.map((vote: any) => ({
-          userId: vote.userId,
-          username: vote.username,
-          stake: vote.stake,
-          loss: vote.stake
-        })),
-        isRefund: false
-      };
+            payout: vote.stake
+          })),
+          losers: [],
+          isRefund: true
+        };
+      } else {
+        result = {
+          totalPool,
+          winningOptionId: winningOption._id.toString(),
+          winningOptionText: winningOption.text,
+          winners: winningVotes.map((vote: any) => {
+            // Each winner gets their stake back plus a proportional share of losing stakes
+            const proportionalShare = totalWinningStakes > 0 ? 
+              (vote.stake / totalWinningStakes) * totalLosingStakes : 0;
+            const payout = vote.stake + proportionalShare;
+            
+            return {
+              userId: vote.userId,
+              username: vote.username,
+              stake: vote.stake,
+              payout: payout
+            };
+          }),
+          losers: losingVotes.map((vote: any) => ({
+            userId: vote.userId,
+            username: vote.username,
+            stake: vote.stake,
+            loss: vote.stake
+          })),
+          isRefund: false
+        };
+      }
     }
     
     return Response.json({ result });

@@ -473,8 +473,8 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
         );
         
         const netProfit = totalPayouts - totalStakes;
-        const winRate = groupBets.filter((bet: any) => bet.status === 'settled').length > 0 
-          ? (groupBets.filter((bet: any) => bet.result === 'won').length / groupBets.filter((bet: any) => bet.status === 'settled').length) * 100 
+        const winRate = groupBets.filter((bet: any) => bet.status === 'settled' && bet.result !== 'refund').length > 0 
+          ? (groupBets.filter((bet: any) => bet.result === 'won').length / groupBets.filter((bet: any) => bet.status === 'settled' && bet.result !== 'refund').length) * 100 
           : 0;
         
         return {
