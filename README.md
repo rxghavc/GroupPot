@@ -1,36 +1,169 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FriendsSplit - Social Betting Platform
 
-## Getting Started
+A sophisticated group betting platform built with Next.js that enables friends and communities to create and participate in custom betting pools with advanced settlement logic and comprehensive analytics.
 
-First, run the development server:
+## 🎯 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### Core Betting System
+- **Multi-format Betting**: Support for single-choice and multi-choice bets
+- **Advanced Settlement Logic**: 
+  - Exact match betting (all selections must be correct)
+  - Partial match betting (proportional payouts for partially correct selections)
+  - Automatic refund system when no winners exist
+- **Dynamic Payout Calculation**: Pool-based profit distribution with proportional stake allocation
+- **Flexible Stake Management**: Configurable minimum and maximum stake limits per bet
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Group Management
+- **Private Group Creation**: Invite-only groups with unique access codes
+- **Role-based Permissions**: Owner and moderator roles with different privileges
+- **Member Analytics**: Comprehensive statistics including win rates, profit/loss, and betting history
+- **Group-specific Analytics**: Track performance across different betting communities
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### User Experience
+- **Real-time Updates**: Auto-refreshing data with manual refresh controls
+- **Comprehensive Dashboard**: Personal betting portfolio with performance metrics
+- **Detailed Betting History**: Complete transaction history with profit/loss tracking
+- **Responsive Design**: Mobile-first design with adaptive layouts
+- **Interactive Charts**: Visual representation of betting performance over time
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Security & Authentication
+- **JWT-based Authentication**: Secure token-based user sessions
+- **Password Reset System**: Email-based password recovery
+- **Account Management**: Complete user profile and account deletion capabilities
 
-## Learn More
+## 🛠️ Technology Stack
 
-To learn more about Next.js, take a look at the following resources:
+### Frontend
+- **Next.js 15**: React framework with App Router
+- **TypeScript**: Type-safe development
+- **Tailwind CSS**: Utility-first styling
+- **shadcn/ui**: Modern component library
+- **Recharts**: Data visualization
+- **Lucide React**: Icon system
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Backend
+- **Next.js API Routes**: Server-side API endpoints
+- **MongoDB Atlas**: Cloud database
+- **Mongoose**: MongoDB object modeling
+- **JWT**: Authentication tokens
+- **Nodemailer**: Email services
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Development Tools
+- **ESLint**: Code linting
+- **Turbopack**: Fast bundler
+- **SWR**: Data fetching and caching
 
-## Deploy on Vercel
+## 🚀 Getting Started
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Prerequisites
+- Node.js 18+ 
+- MongoDB Atlas account
+- SMTP email service (for password reset)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd my-app
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Environment Setup**
+   Create a `.env.local` file with the following variables:
+   ```env
+   MONGODB_URI=your_mongodb_atlas_connection_string
+   JWT_SECRET=your_jwt_secret_key
+   EMAIL_HOST=your_smtp_host
+   EMAIL_PORT=your_smtp_port
+   EMAIL_USER=your_email_username
+   EMAIL_PASS=your_email_password
+   EMAIL_FROM=your_from_email_address
+   ```
+
+4. **Run the development server**
+   ```bash
+   npm run dev
+   ```
+
+5. **Access the application**
+   Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## 📊 Key Architecture Decisions
+
+### Database Design
+- **User Management**: Secure user profiles with encrypted passwords
+- **Group System**: Hierarchical group structure with member roles
+- **Betting Logic**: Flexible bet schema supporting multiple voting types
+- **Vote Tracking**: Granular vote recording for accurate payout calculations
+
+### Settlement Algorithm
+The platform implements a sophisticated settlement system:
+- **Pool-based Payouts**: Winners share the total pool proportionally to their stakes
+- **Partial Match Logic**: Users can win proportional amounts for partially correct multi-choice bets
+- **Refund Handling**: Automatic refunds when no valid winners exist
+- **Stake Splitting**: Complex calculation for partial match scenarios
+
+### Performance Optimizations
+- **SWR Caching**: Efficient data fetching with automatic revalidation
+- **Auto-refresh System**: Smart polling with user activity detection
+- **Responsive Loading**: Skeleton screens and progressive loading
+- **Error Boundaries**: Graceful error handling throughout the application
+
+## 🔧 API Endpoints
+
+### Authentication
+- `POST /api/auth/signup` - User registration
+- `POST /api/auth/login` - User login
+- `GET /api/auth/me` - Get current user
+- `POST /api/auth/forgot-password` - Password reset request
+- `POST /api/auth/reset-password` - Password reset confirmation
+
+### Groups
+- `GET /api/groups` - List user's groups
+- `POST /api/groups` - Create new group
+- `GET /api/groups/[groupId]` - Get group details
+- `POST /api/groups/[groupId]/members` - Add group member
+- `DELETE /api/groups/[groupId]/members/[userId]` - Remove member
+
+### Betting
+- `POST /api/bets` - Create new bet
+- `GET /api/groups/[groupId]/bets` - Get group bets
+- `POST /api/bets/[betId]/vote` - Place vote
+- `POST /api/bets/[betId]/outcome` - Settle bet (moderators only)
+- `GET /api/bets/[betId]/payouts` - Get settlement results
+
+### Analytics
+- `GET /api/users/[userId]/bets` - User betting history
+- `GET /api/dashboard/stats` - Dashboard statistics
+
+## 🚦 Future Enhancements
+
+- **Multi-currency Support**: Support for different currency symbols and conversion
+- **Enhanced Analytics**: Advanced statistical analysis and predictions
+- **Mobile App**: Native mobile applications
+- **Real-time Notifications**: Push notifications for bet updates
+- **Social Features**: Comments, reactions, and social sharing
+- **Advanced Bet Types**: Support for more complex betting scenarios
+
+## 📱 Responsive Design
+
+The platform is fully responsive and optimized for:
+- **Desktop**: Full-featured experience with advanced analytics
+- **Tablet**: Optimized layouts for medium screens
+- **Mobile**: Touch-friendly interface with essential features
+
+## 🤝 Contributing
+
+This is a personal project, but feedback and suggestions are welcome. Please feel free to open issues for bugs or feature requests.
+
+## 📄 License
+
+This project is for portfolio purposes. All rights reserved.
+
+---
+
