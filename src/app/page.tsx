@@ -63,7 +63,7 @@ export default function Home() {
       <div className="flex flex-col items-center gap-2">
         <FaUserFriends className="w-14 h-14 text-emerald-500 drop-shadow mb-2" />
         <h1 className="text-4xl font-extrabold tracking-tight text-primary drop-shadow-sm">
-          Welcome to <span className="text-emerald-500">FriendsStake</span>
+          Welcome to <span className="text-emerald-500">FriendsSplit</span>
         </h1>
         <p className="text-xl text-muted-foreground max-w-2xl">
           The fun way to make friendly bets with your friends and split winnings fairly
