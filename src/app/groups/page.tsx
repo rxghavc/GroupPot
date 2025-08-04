@@ -332,6 +332,31 @@ export default function GroupsPage() {
                             className="border rounded px-2 py-1 w-full min-h-[60px] text-sm"
                           />
                         </div>
+                        <div className="flex gap-4">
+                          <div className="flex-1">
+                            <label className="block text-sm font-medium mb-1">Min Stake</label>
+                            <Input
+                              type="number"
+                              name="minStake"
+                              value={newGroup.minStake}
+                              min={1}
+                              max={newGroup.maxStake}
+                              onChange={handleInputChange}
+                              required
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-sm font-medium mb-1">Max Stake</label>
+                            <Input
+                              type="number"
+                              name="maxStake"
+                              value={newGroup.maxStake}
+                              min={newGroup.minStake}
+                              onChange={handleInputChange}
+                              required
+                            />
+                          </div>
+                        </div>
                         <Button
                           type="submit"
                           variant="default"
@@ -449,43 +474,68 @@ export default function GroupsPage() {
                   <DialogHeader>
                     <DialogTitle>Create a New Group</DialogTitle>
                   </DialogHeader>
-                  <form
-                    onSubmit={handleCreateGroup}
-                    className="flex flex-col gap-4 mt-2"
-                  >
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Group Name
-                      </label>
-                      <Input
-                        name="name"
-                        value={newGroup.name}
-                        onChange={handleInputChange}
-                        placeholder="Enter group name"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Description
-                      </label>
-                      <textarea
-                        name="description"
-                        value={newGroup.description}
-                        onChange={handleInputChange}
-                        placeholder="Enter group description"
-                        required
-                        className="border rounded px-2 py-1 w-full min-h-[60px] text-sm"
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      variant="default"
-                      className="w-full mt-2"
+                    <form
+                      onSubmit={handleCreateGroup}
+                      className="flex flex-col gap-4 mt-2"
                     >
-                      Create
-                    </Button>
-                  </form>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Group Name
+                        </label>
+                        <Input
+                          name="name"
+                          value={newGroup.name}
+                          onChange={handleInputChange}
+                          placeholder="Enter group name"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Description
+                        </label>
+                        <textarea
+                          name="description"
+                          value={newGroup.description}
+                          onChange={handleInputChange}
+                          placeholder="Enter group description"
+                          required
+                          className="border rounded px-2 py-1 w-full min-h-[60px] text-sm"
+                        />
+                      </div>
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium mb-1">Default Min Stake</label>
+                          <Input
+                            type="number"
+                            name="minStake"
+                            value={newGroup.minStake}
+                            min={1}
+                            max={newGroup.maxStake}
+                            onChange={handleInputChange}
+                            required
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium mb-1">Default Max Stake</label>
+                          <Input
+                            type="number"
+                            name="maxStake"
+                            value={newGroup.maxStake}
+                            min={newGroup.minStake}
+                            onChange={handleInputChange}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        type="submit"
+                        variant="default"
+                        className="w-full mt-2"
+                      >
+                        Create
+                      </Button>
+                    </form>
                 </DialogContent>
               </Dialog>
               
