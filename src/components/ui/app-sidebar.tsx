@@ -1,5 +1,5 @@
 import * as React from "react"
-import { GalleryVerticalEnd, Users, Layers, User } from "lucide-react"
+import { GalleryVerticalEnd, Users, Layers, User, ScrollText } from "lucide-react"
 import { FaUserFriends } from "react-icons/fa";
 
 import {
@@ -36,6 +36,11 @@ const data = {
       url: "/settings",
       icon: User,
     },
+    {
+      title: "Documentation",
+      url: "/documentation",
+      icon: ScrollText, //
+    }
   ],
 }
 
