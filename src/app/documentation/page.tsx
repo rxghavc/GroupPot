@@ -264,45 +264,37 @@ export default function DocumentationPage() {
             <TabsContent value="faq">
               <h2 className="text-xl font-semibold mb-2">Frequently Asked Questions (FAQs)</h2>
               <Accordion type="single" collapsible>
-                <AccordionItem value="join-group">
-                  <AccordionTrigger>How do I join a group?</AccordionTrigger>
-                  <AccordionContent>Go to the Groups page, enter the group code provided by your friend, and click Join.</AccordionContent>
+                <AccordionItem value="what-is-friendssplit">
+                  <AccordionTrigger>What is FriendsSplit and who is it for?</AccordionTrigger>
+                  <AccordionContent>FriendsSplit is a social betting platform for friends and family to create groups, place friendly bets, and track results. It's designed for anyone who wants to add a little fun and friendly competition to their group chats or gatherings.</AccordionContent>
                 </AccordionItem>
-                <AccordionItem value="create-group">
-                  <AccordionTrigger>How do I create a group?</AccordionTrigger>
-                  <AccordionContent>On the Groups page, click 'Create Group', fill in the details, and share the generated code with friends.</AccordionContent>
+                <AccordionItem value="how-to-get-started">
+                  <AccordionTrigger>How do I get started?</AccordionTrigger>
+                  <AccordionContent>Sign up with your email, create or join a group, and start placing bets! The app is mobile-friendly and supports auto-updates.</AccordionContent>
                 </AccordionItem>
-                <AccordionItem value="place-bet">
-                  <AccordionTrigger>How do I place a bet?</AccordionTrigger>
-                  <AccordionContent>Navigate to the Bets page or a specific group, select a bet, choose your options, and enter your stake.</AccordionContent>
+                <AccordionItem value="group-management">
+                  <AccordionTrigger>How do I create, join, or leave a group?</AccordionTrigger>
+                  <AccordionContent>Go to the Groups page. To create a group, click 'Create Group' and fill in the details. To join, enter a group code. To leave, use the 'Leave Group' button in your group card.</AccordionContent>
                 </AccordionItem>
-                <AccordionItem value="settle-bet">
-                  <AccordionTrigger>Who can settle a bet?</AccordionTrigger>
-                  <AccordionContent>Only group owners and moderators can settle bets once the outcome is known.</AccordionContent>
+                <AccordionItem value="invite-friends">
+                  <AccordionTrigger>How do I invite friends to my group?</AccordionTrigger>
+                  <AccordionContent>Share your group's unique code with friends. They can use it to join your group from the Groups page.</AccordionContent>
                 </AccordionItem>
-                <AccordionItem value="payouts">
-                  <AccordionTrigger>How are payouts calculated?</AccordionTrigger>
-                  <AccordionContent>Payouts are pool-based and depend on your stake and the outcome. Partial matches and refunds are handled automatically by the system.</AccordionContent>
+                <AccordionItem value="account-management">
+                  <AccordionTrigger>How do I reset my password or delete my account?</AccordionTrigger>
+                  <AccordionContent>Go to the Settings page. Click 'Reset Password' to recover access, or use the Danger Zone to permanently delete your account and data.</AccordionContent>
                 </AccordionItem>
-                <AccordionItem value="refunds">
-                  <AccordionTrigger>What happens if no one wins a bet?</AccordionTrigger>
-                  <AccordionContent>All stakes are refunded to participants if there are no winners.</AccordionContent>
+                <AccordionItem value="security-privacy">
+                  <AccordionTrigger>Is my data secure and private?</AccordionTrigger>
+                  <AccordionContent>Yes. All sensitive data is encrypted and protected by JWT authentication. Passwords are securely hashed and never stored in plain text. Only you can access your account and bets.</AccordionContent>
                 </AccordionItem>
-                <AccordionItem value="reset-password">
-                  <AccordionTrigger>How do I reset my password?</AccordionTrigger>
-                  <AccordionContent>Go to the Settings page and click 'Reset Password' to start the password recovery process.</AccordionContent>
+                <AccordionItem value="mobile-support">
+                  <AccordionTrigger>Can I use FriendsSplit on my phone?</AccordionTrigger>
+                  <AccordionContent>Absolutely! The app is fully responsive and optimized for mobile devices, so you can bet and manage groups on the go.</AccordionContent>
                 </AccordionItem>
-                <AccordionItem value="delete-account">
-                  <AccordionTrigger>Can I delete my account?</AccordionTrigger>
-                  <AccordionContent>Yes, you can permanently delete your account from the Settings page.</AccordionContent>
-                </AccordionItem>
-                <AccordionItem value="security">
-                  <AccordionTrigger>Is my data secure?</AccordionTrigger>
-                  <AccordionContent>All sensitive data is encrypted and protected by JWT authentication. Passwords are securely hashed and never stored in plain text.</AccordionContent>
-                </AccordionItem>
-                <AccordionItem value="mobile">
-                  <AccordionTrigger>Can I use the app on my phone?</AccordionTrigger>
-                  <AccordionContent>Yes, the app is fully responsive and optimized for mobile devices.</AccordionContent>
+                <AccordionItem value="contact-support">
+                  <AccordionTrigger>How can I contact support or report a bug?</AccordionTrigger>
+                  <AccordionContent>Use the Support & Contact section at the bottom of this page to reach out via email or LinkedIn. I'm always happy to help and improve FriendsSplit!</AccordionContent>
                 </AccordionItem>
               </Accordion>
             </TabsContent>
