@@ -81,7 +81,7 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, open, onSubmit,
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     
-    if (!title.trim() || !description.trim() || !deadline) {
+    if (!title.trim() || !deadline) {
       alert("Please fill in all required fields");
       return;
     }
@@ -153,13 +153,12 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, open, onSubmit,
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Description *</label>
+                <label className="block text-sm font-medium mb-2">Description</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe the bet..."
+                  placeholder="Describe the bet... (optional)"
                   className="w-full border rounded-md px-3 py-3 min-h-[120px] text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
                 />
               </div>
 
