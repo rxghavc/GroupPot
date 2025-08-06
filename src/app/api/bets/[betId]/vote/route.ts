@@ -28,7 +28,6 @@ export async function POST(
     const { optionId, stake } = body;
 
     if (!optionId || !stake) {
-      console.log('Missing required fields:', { optionId, stake });
       return Response.json({ error: 'Option ID and stake are required' }, { status: 400 });
     }
 
@@ -37,21 +36,10 @@ export async function POST(
     // Await params for Next.js 15 compatibility
     const { betId } = await params;
 
-    console.log('Vote request:', { betId, optionId, stake });
-
     const bet = await Bet.findById(betId).populate('groupId');
     if (!bet) {
       return Response.json({ error: 'Bet not found' }, { status: 404 });
     }
-
-    console.log('Bet found:', { 
-      betId: bet._id, 
-      votingType: bet.votingType, 
-      minStake: bet.minStake, 
-      maxStake: bet.maxStake,
-      status: bet.status,
-      deadline: bet.deadline
-    });
 
     if (bet.status !== 'open') {
       return Response.json({ error: 'Bet is not open for voting' }, { status: 400 });
@@ -155,7 +143,7 @@ export async function POST(
       }
     }
   } catch (error) {
-    console.error('Error placing vote:', error);
+    // Error logging removed for production cleanliness
     return Response.json({ error: 'Failed to place vote' }, { status: 500 });
   }
 }
@@ -226,7 +214,7 @@ export async function DELETE(
 
     return Response.json({ message: 'Vote removed successfully' });
   } catch (error) {
-    console.error('Error removing vote:', error);
+    // Error logging removed for production cleanliness
     return Response.json({ error: 'Failed to remove vote' }, { status: 500 });
   }
 }

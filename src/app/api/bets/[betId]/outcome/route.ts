@@ -187,9 +187,6 @@ export async function POST(
           }
         });
         
-        console.log('Winners array after processing:', winners);
-        console.log('Losers array after processing:', losers);
-        
         // Calculate total losing stakes (from pure losers + non-winning portions of winners)
         const totalLosingStakesFromLosers = losers.reduce((sum, loser) => sum + loser.stake, 0);
         const additionalLosingStakes = winners.reduce((sum, winner) => {
@@ -202,13 +199,6 @@ export async function POST(
         
         const totalLosingStakes = totalLosingStakesFromLosers + additionalLosingStakes;
         const totalWinningStakes = winners.reduce((sum, winner) => sum + winner.stake, 0);
-        
-        console.log('Settlement calculation:');
-        console.log('Total pool:', totalPool);
-        console.log('Total losing stakes from pure losers:', totalLosingStakesFromLosers);
-        console.log('Additional losing stakes from winners non-winning portions:', additionalLosingStakes);
-        console.log('Total losing stakes:', totalLosingStakes);
-        console.log('Total winning stakes:', totalWinningStakes);
 
         // Calculate payouts for partial match
         let winnersWithPayouts: any[] = [];
@@ -382,7 +372,7 @@ export async function POST(
       winningOptions: uniqueWinningOptions.map(opt => opt.text)
     });
   } catch (error) {
-    console.error('Error settling bet:', error);
+    // Error logging removed for production cleanliness
     return Response.json({ error: 'Failed to settle bet' }, { status: 500 });
   }
 }
