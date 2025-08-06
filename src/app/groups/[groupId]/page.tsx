@@ -130,13 +130,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
           groupData.group.moderators.includes(user?.id)
         );
         
-        // Debug logging
-        console.log('Moderator check:', {
-          userId: user?.id,
-          ownerId: groupData.group.ownerId,
-          moderators: groupData.group.moderators,
-          isModerator: groupData.group.ownerId === user?.id || groupData.group.moderators.includes(user?.id)
-        });
+        
       } else if (groupResponse.status === 404) {
         // Group not found - might have been deleted
         router.push('/groups');
