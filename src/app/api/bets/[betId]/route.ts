@@ -203,16 +203,8 @@ export async function DELETE(
     // For unsettled bets, refund participants by adding stakes back to their balances
     if (!isSettled) {
       // Get all votes for this bet to process refunds
-      const votes = await Vote.find({ betId: bet._id });
-      
-      // Process refunds for each participant
-      const refundPromises = votes.map(async (vote) => {
-        // Add the stake back to the user's balance
-        // Note: You might want to implement a proper balance system here
-        console.log(`Refunding ${vote.stake} to user ${vote.userId} for bet ${betId}`);
-      });
-      
-      await Promise.all(refundPromises);
+      // Note: Refund logic not implemented. Code here in the future.
+      await Vote.find({ betId: bet._id });
     }
 
     // Delete all votes for this bet from the Vote collection

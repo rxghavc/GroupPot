@@ -276,8 +276,6 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
         return;
       }
 
-      console.log('Placing vote:', { betId: bet.id, voteData });
-
       const response = await fetch(`/api/bets/${bet.id}/vote`, {
         method: 'POST',
         headers: {
@@ -289,7 +287,6 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Vote successful:', result);
         
         // For multi-vote bets, debounce the refresh to avoid multiple rapid updates
         if (voteTimeout) {
@@ -332,8 +329,6 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
         return;
       }
 
-      console.log('Settling bet:', { betId: bet.id, optionIds });
-
       const requestBody = Array.isArray(winningOptionId) 
         ? { winningOptionIds: winningOptionId }
         : { winningOptionId: winningOptionId };
@@ -349,7 +344,6 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Settle successful:', data);
         setResults(prev => new Map(prev).set(bet.id, data.result));
         // Refresh the bets to show updated status
         fetchGroupData();
