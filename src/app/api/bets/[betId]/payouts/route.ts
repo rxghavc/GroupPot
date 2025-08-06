@@ -154,13 +154,6 @@ export async function GET(
         totalLosingStakes = totalLosingStakesFromLosers + additionalLosingStakes;
         totalWinningStakes = winners.reduce((sum, winner) => sum + winner.stake, 0);
         
-        console.log('Payouts API - Partial match calculation:');
-        console.log('Winners:', winners);
-        console.log('Losers:', losers);
-        console.log('Total losing stakes from losers:', totalLosingStakesFromLosers);
-        console.log('Additional losing stakes from winners:', additionalLosingStakes);
-        console.log('Total losing stakes:', totalLosingStakes);
-        console.log('Total winning stakes:', totalWinningStakes);
       } else {
         // For exact match, use simple calculation
         totalLosingStakes = losers.reduce((sum, loser) => sum + loser.stake, 0);
@@ -313,7 +306,7 @@ export async function GET(
     
     return Response.json({ result });
   } catch (error) {
-    console.error('Error fetching bet result:', error);
+    // Error logging removed for production cleanliness
     return Response.json({ error: 'Failed to fetch bet result' }, { status: 500 });
   }
 } 
