@@ -45,7 +45,7 @@ export async function POST(
     }
 
     const isOwner = group.ownerId.toString() === decoded.userId;
-    const isModerator = group.moderators.some((modId: any) => modId.toString() === decoded.userId);
+    const isModerator = group.moderators.some((modId: string) => modId.toString() === decoded.userId);
     
     if (!isOwner && !isModerator) {
       return Response.json({ error: 'Only moderators can force close bets' }, { status: 403 });
