@@ -146,12 +146,18 @@ export async function GET(
               },
             });
             
+            console.log(`Payouts API response status for bet ${bet._id}:`, payoutsResponse.status);
             if (payoutsResponse.ok) {
               const payoutsData = await payoutsResponse.json();
+              console.log(`Payouts data for bet ${bet._id}:`, JSON.stringify(payoutsData.result, null, 2));
               const winner = payoutsData.result.winners.find((w: any) => w.userId === userId);
+              console.log(`Winner found for user ${userId}:`, winner);
               if (winner) {
                 payout = winner.payout;
+                console.log(`Setting payout to: ${payout}`);
               }
+            } else {
+              console.log(`Payouts API failed for bet ${bet._id}:`, await payoutsResponse.text());
             }
           } catch (error) {
             console.error('Error fetching payout data:', error);
