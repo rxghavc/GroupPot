@@ -31,9 +31,26 @@ interface BetFormProps {
     multiVoteType?: 'exact_match' | 'partial_match';
   }) => void;
   onCancel: () => void;
+  initialValues?: {
+    title?: string;
+    description?: string;
+    options?: string[];
+    minStake?: number;
+    maxStake?: number;
+    votingType?: 'single' | 'multi';
+    multiVoteType?: 'exact_match' | 'partial_match';
+  };
 }
 
-export function BetForm({ groupId, groupMinStake, groupMaxStake, open, onSubmit, onCancel }: BetFormProps) {
+export function BetForm({ 
+  groupId, 
+  groupMinStake, 
+  groupMaxStake, 
+  open, 
+  onSubmit, 
+  onCancel, 
+  initialValues 
+}: BetFormProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [options, setOptions] = useState(["", ""]);
@@ -45,14 +62,14 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, open, onSubmit,
 
   // Reset form when dialog closes
   function resetForm() {
-    setTitle("");
-    setDescription("");
-    setOptions(["", ""]);
+    setTitle(initialValues?.title || "");
+    setDescription(initialValues?.description || "");
+    setOptions(initialValues?.options || ["", ""]);
     setDeadline("");
-    setMinStake(Math.max(1, groupMinStake));
-    setMaxStake(Math.max(1, groupMaxStake));
-    setVotingType('single');
-    setMultiVoteType('exact_match');
+    setMinStake(initialValues?.minStake || Math.max(1, groupMinStake));
+    setMaxStake(initialValues?.maxStake || Math.max(1, groupMaxStake));
+    setVotingType(initialValues?.votingType || 'single');
+    setMultiVoteType(initialValues?.multiVoteType || 'exact_match');
   }
 
   // Reset form when dialog opens
@@ -60,7 +77,7 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, open, onSubmit,
     if (open) {
       resetForm();
     }
-  }, [open, groupMinStake, groupMaxStake]);
+  }, [open, groupMinStake, groupMaxStake, initialValues]);
 
   function addOption() {
     setOptions([...options, ""]);
@@ -135,7 +152,7 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, open, onSubmit,
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleCancel()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Bet</DialogTitle>
+          <DialogTitle>{initialValues ? 'Clone Bet' : 'Create New Bet'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
