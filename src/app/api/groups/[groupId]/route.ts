@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import connectDB from '@/lib/db';
 import Group from '@/models/Group';
+import User from '@/models/User'; // Import User model to register schema
 import { verifyToken } from '@/lib/auth';
 
 // GET /api/groups/:groupId - Get a specific group
