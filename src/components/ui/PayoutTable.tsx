@@ -28,17 +28,13 @@ export function PayoutTable({ bet, result }: PayoutTableProps) {
           <CardContent>
             <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
               <p className="text-sm text-blue-700 leading-relaxed">
-                <strong>How it works:</strong> {(result as any).explanation || 'In partial match betting, your stake is split equally across all options you choose. You win based only on the portion placed on the winning option.'}
+                <strong>How it works:</strong> {(result as any).explanation || 'In partial match betting, your stake applies to each selected option. You win based on your stakes on any of the winning options.'}
               </p>
               {(result as any).totalLosingStakesFromLosers !== undefined && (
-                <div className="mt-4 text-xs text-blue-600 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="mt-4 text-xs text-blue-600">
                   <div className="flex justify-between">
-                    <span>Pure Losing Stakes:</span>
-                    <span className="font-medium">£{((result as any).totalLosingStakesFromLosers || 0).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Non-winning Portions:</span>
-                    <span className="font-medium">£{((result as any).additionalLosingStakesFromWinners || 0).toFixed(2)}</span>
+                    <span>Total Losing Stakes (redistributed to winners):</span>
+                    <span className="font-medium">£{(((result as any).totalLosingStakesFromLosers || 0) + ((result as any).additionalLosingStakesFromWinners || 0)).toFixed(2)}</span>
                   </div>
                 </div>
               )}
