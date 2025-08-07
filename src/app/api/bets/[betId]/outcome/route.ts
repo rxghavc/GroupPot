@@ -149,33 +149,36 @@ export async function POST(
 
       if (bet.multiVoteType === 'partial_match') {
         // Situation A: Partial Match - Users vote on multiple options, each with individual stakes
-        // Users win based on their stake on the winning option only
+        // Users win based on their stake on any of the winning options
         
-        if (uniqueWinningOptions.length > 1) {
-          return Response.json({ error: 'Partial match bets can only have one winning option' }, { status: 400 });
-        }
+        // Partial match now supports multiple winning options
+        // A user wins if they voted on ANY of the winning options
         
-        const winningOptionId = winningOptionIds[0];
+        const winningOptionIdSet = new Set(winningOptionIds);
         
-        // For each user, check if they voted on the winning option
+        // For each user, check if they voted on any of the winning options
         votesByUser.forEach((userVotes, userId) => {
           const userTotalStake = userVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
-          const winningVote = userVotes.find((vote: any) => vote.optionId.toString() === winningOptionId);
           
-          if (winningVote) {
-            // User has a vote on the winning option
-            // In partial match, each vote represents the full stake for that option
-            const winningStake = winningVote.stake;
+          // Find all votes on winning options
+          const winningVotes = userVotes.filter((vote: any) => 
+            winningOptionIdSet.has(vote.optionId.toString())
+          );
+          
+          if (winningVotes.length > 0) {
+            // User has votes on one or more winning options
+            // In partial match, calculate total stake on winning options
+            const totalWinningStake = winningVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
             
-            // User wins based on their full stake on the winning option
+            // User wins based on their full stake on all winning options
             winners.push({
               userId: userId,
               username: userVotes[0].username,
-              stake: winningStake // Full stake on the winning option
+              stake: totalWinningStake // Total stake on all winning options
             });
             
             // The stakes on non-winning options contribute to the losing pool
-            const losingStake = userTotalStake - winningStake;
+            const losingStake = userTotalStake - totalWinningStake;
             if (losingStake > 0) {
               losers.push({
                 userId: userId,
@@ -184,7 +187,7 @@ export async function POST(
               });
             }
           } else {
-            // User didn't vote on winning option - all stake goes to losers
+            // User didn't vote on any winning option - all stake goes to losers
             losers.push({
               userId: userId,
               username: userVotes[0].username,
@@ -219,11 +222,17 @@ export async function POST(
               (winner.stake / totalWinningStakes) * totalLosingStakes : 0;
             const payout = winner.stake + proportionalShare;
             
+            // For partial match, add additional info
+            const userVotes = votesByUser.get(winner.userId);
+            const userTotalStake = userVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
+            
             return {
               userId: winner.userId,
               username: winner.username,
               stake: winner.stake,
-              payout: payout
+              payout: payout,
+              totalOriginalStake: userTotalStake,
+              totalOptionsCount: userVotes.length
             };
           });
 
@@ -238,13 +247,22 @@ export async function POST(
         // For partial match, we need to handle the result differently
         const result = {
           totalPool,
-          winningOptionId: uniqueWinningOptions[0]._id.toString(),
-          winningOptionText: uniqueWinningOptions[0].text,
+          winningOptionId: uniqueWinningOptions[0]._id.toString(), // Keep for backward compatibility
+          winningOptionText: uniqueWinningOptions[0].text, // Keep for backward compatibility
           winningOptionIds: uniqueWinningOptions.map(opt => opt._id.toString()),
           winningOptionTexts: uniqueWinningOptions.map(opt => opt.text),
           winners: winnersWithPayouts,
           losers: losersWithLoss,
-          isRefund: winners.length === 0
+          isRefund: winners.length === 0,
+          // Add extra data for partial match understanding
+          betType: 'partial_match',
+          explanation: `In partial match betting, your stake applies to each selected option. You win based on your stakes on any of the winning options: ${uniqueWinningOptions.map(opt => opt.text).join(', ')}.`,
+          totalLosingStakesFromLosers: losers.reduce((sum, loser) => sum + loser.stake, 0),
+          additionalLosingStakesFromWinners: winners.reduce((sum, winner) => {
+            const userVotes = votesByUser.get(winner.userId);
+            const userTotalStake = userVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
+            return sum + (userTotalStake - winner.stake); // Non-winning portion
+          }, 0)
         };
 
         const message = winners.length === 0 

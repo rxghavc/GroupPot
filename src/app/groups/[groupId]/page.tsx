@@ -391,11 +391,11 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
     
     let optionsToSettle: string[];
     
-    if (pendingSettleBet.votingType === 'multi' && pendingSettleBet.multiVoteType === 'exact_match') {
-      // Exact match: Use multiple options
+    if (pendingSettleBet.votingType === 'multi') {
+      // Multi-vote: Use multiple options for both exact and partial match
       optionsToSettle = pendingSettleOptions;
     } else {
-      // Single vote or partial match: Use single option
+      // Single vote: Use single option
       optionsToSettle = pendingSettleOption ? [pendingSettleOption] : [];
     }
     
@@ -1214,7 +1214,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                 <div className="text-sm">
                   {pendingSettleBet?.votingType === 'multi' 
                     ? pendingSettleBet?.multiVoteType === 'partial_match'
-                      ? 'Select the single winning option for this partial-match bet.'
+                      ? 'Select one or more winning options for this partial-match bet. Users win based on stakes on any selected option.'
                       : 'Select all winning options for this all-or-nothing bet.'
                     : 'Select the winning option. This will calculate payouts for all participants.'
                   }
@@ -1227,7 +1227,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
             <div className="space-y-4">
               <div className="space-y-3">
                 {pendingSettleBet.options.map((option) => {
-                  const isSelected = pendingSettleBet.votingType === 'multi' && pendingSettleBet.multiVoteType === 'exact_match'
+                  const isSelected = pendingSettleBet.votingType === 'multi'
                     ? pendingSettleOptions.includes(option.id)
                     : pendingSettleOption === option.id;
                   
@@ -1241,20 +1241,20 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                       }`}
                     >
                       <input
-                        type={pendingSettleBet.votingType === 'multi' && pendingSettleBet.multiVoteType === 'exact_match' ? 'checkbox' : 'radio'}
-                        name={pendingSettleBet.votingType === 'multi' && pendingSettleBet.multiVoteType === 'exact_match' ? 'winningOptions' : 'winningOption'}
+                        type={pendingSettleBet.votingType === 'multi' ? 'checkbox' : 'radio'}
+                        name={pendingSettleBet.votingType === 'multi' ? 'winningOptions' : 'winningOption'}
                         value={option.id}
                         checked={isSelected}
                         onChange={(e) => {
-                          if (pendingSettleBet.votingType === 'multi' && pendingSettleBet.multiVoteType === 'exact_match') {
-                            // Exact match: Allow multiple selections (checkboxes)
+                          if (pendingSettleBet.votingType === 'multi') {
+                            // Multi-vote: Allow multiple selections (checkboxes) for both exact and partial match
                             if (e.target.checked) {
                               setPendingSettleOptions(prev => [...prev, option.id]);
                             } else {
                               setPendingSettleOptions(prev => prev.filter(id => id !== option.id));
                             }
                           } else {
-                            // Single vote or partial match: Only one selection (radio)
+                            // Single vote: Only one selection (radio)
                             setPendingSettleOption(e.target.value);
                             setPendingSettleOptions([]); // Clear multi-selections for consistency
                           }
@@ -1284,7 +1284,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                   <p className="text-sm text-blue-700">
                     {pendingSettleBet.multiVoteType === 'partial_match' ? (
                       <>
-                        <strong>Partial Match rule:</strong> Users who voted on the winning option will receive payouts based on their stake on that option. Stakes on non-winning options will be redistributed to winners.
+                        <strong>Partial Match rule:</strong> Users who voted on ANY of the selected winning options will receive payouts based on their stakes on those options. Stakes on non-winning options will be redistributed to winners.
                       </>
                     ) : (
                       <>
@@ -1308,7 +1308,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
             <AlertDialogAction 
               onClick={handleSettleConfirmed} 
               disabled={
-                pendingSettleBet?.votingType === 'multi' && pendingSettleBet?.multiVoteType === 'exact_match'
+                pendingSettleBet?.votingType === 'multi'
                   ? pendingSettleOptions.length === 0
                   : !pendingSettleOption
               }
