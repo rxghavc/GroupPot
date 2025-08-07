@@ -40,24 +40,6 @@ export async function GET(
     // Fetch all votes for this bet from the Vote collection
     const allVotes = await Vote.find({ betId: bet._id });
 
-    // Group votes by option
-    const votesByOption = new Map();
-    bet.options.forEach((option: any) => {
-      votesByOption.set(option._id.toString(), []);
-    });
-
-    allVotes.forEach((vote) => {
-      const optionId = vote.optionId.toString();
-      if (votesByOption.has(optionId)) {
-        votesByOption.get(optionId).push({
-          userId: vote.userId.toString(),
-          username: vote.username,
-          stake: vote.stake,
-          timestamp: vote.timestamp
-        });
-      }
-    });
-
     // Calculate total pool from all votes
     const totalPool = allVotes.reduce((total, vote) => total + vote.stake, 0);
 
@@ -98,7 +80,7 @@ export async function GET(
           
           if (winningVotes.length > 0) {
             // User has votes on one or more winning options
-            // In the new partial match, each vote represents the full stake for that option
+            // In partial match, calculate total stake on winning options
             const totalWinningStake = winningVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
             
             // User wins based on their full stake on all winning options
@@ -258,14 +240,26 @@ export async function GET(
         return Response.json({ error: 'Invalid winning option index' }, { status: 400 });
       }
 
-      const winningVotes = votesByOption.get(winningOption._id.toString()) || [];
-      
-      // Get losing votes (all votes not on winning option)
+      // Get votes from the Vote collection, not from the embedded votes
+      const winningVotes: any[] = [];
       const losingVotes: any[] = [];
-      bet.options.forEach((option: any, index: number) => {
-        if (index !== bet.winningOption) {
-          const optionVotes = votesByOption.get(option._id.toString()) || [];
-          losingVotes.push(...optionVotes);
+
+      // Categorize all votes based on the winning option
+      allVotes.forEach((vote) => {
+        if (vote.optionId.toString() === winningOption._id.toString()) {
+          winningVotes.push({
+            userId: vote.userId.toString(),
+            username: vote.username,
+            stake: vote.stake,
+            timestamp: vote.timestamp
+          });
+        } else {
+          losingVotes.push({
+            userId: vote.userId.toString(),
+            username: vote.username,
+            stake: vote.stake,
+            timestamp: vote.timestamp
+          });
         }
       });
 
@@ -276,14 +270,12 @@ export async function GET(
       // Check if there are no winners (refund scenario for single vote)
       if (winningVotes.length === 0) {
         // No one voted on the winning option - refund everyone
-        const allVotes = [...losingVotes];
-        
         result = {
           totalPool,
           winningOptionId: winningOption._id.toString(),
           winningOptionText: winningOption.text,
           winners: allVotes.map((vote: any) => ({
-            userId: vote.userId,
+            userId: vote.userId.toString(),
             username: vote.username,
             stake: vote.stake,
             payout: vote.stake
