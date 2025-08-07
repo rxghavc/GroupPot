@@ -25,8 +25,96 @@ export async function POST(
     }
 
     const body = await req.json();
-    const { optionId, stake } = body;
+    const { optionId, stake, votes } = body;
 
+    // Support batch voting for multi-vote bets
+    if (votes && Array.isArray(votes)) {
+      // Batch vote submission for multi-vote bets
+      await connectDB();
+      
+      // Await params for Next.js 15 compatibility
+      const { betId } = await params;
+
+      const bet = await Bet.findById(betId).populate('groupId');
+      if (!bet) {
+        return Response.json({ error: 'Bet not found' }, { status: 404 });
+      }
+
+      if (bet.status !== 'open') {
+        return Response.json({ error: 'Bet is not open for voting' }, { status: 400 });
+      }
+
+      if (bet.deadline < new Date()) {
+        return Response.json({ error: 'Bet deadline has passed' }, { status: 400 });
+      }
+
+      if (bet.votingType !== 'multi') {
+        return Response.json({ error: 'Batch voting only allowed for multi-vote bets' }, { status: 400 });
+      }
+
+      // Validate all votes in the batch
+      for (const vote of votes) {
+        if (!vote.optionId || !vote.stake) {
+          return Response.json({ error: 'Each vote must have optionId and stake' }, { status: 400 });
+        }
+
+        // Find the option index
+        const optionIndex = bet.options.findIndex((opt: any) => 
+          opt._id.toString() === vote.optionId || 
+          `${bet._id}-option-${bet.options.indexOf(opt) + 1}` === vote.optionId
+        );
+
+        if (optionIndex === -1) {
+          return Response.json({ error: `Invalid option selected: ${vote.optionId}` }, { status: 400 });
+        }
+
+        if (vote.stake <= 0) {
+          return Response.json({ error: 'Stake must be greater than 0' }, { status: 400 });
+        }
+        if (vote.stake > Math.max(1, bet.maxStake)) {
+          return Response.json({ 
+            error: `Individual stake cannot exceed £${Math.max(1, bet.maxStake)}` 
+          }, { status: 400 });
+        }
+      }
+
+      // Check if user is a member of the group
+      const group = await Group.findById(bet.groupId);
+      if (!group || !group.members.some((memberId: any) => memberId.toString() === decoded.userId)) {
+        return Response.json({ error: 'You must be a member of the group to vote' }, { status: 403 });
+      }
+
+      // Get user info for vote record
+      const user = await User.findById(decoded.userId);
+      if (!user) {
+        return Response.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      // Delete all existing votes for this user on this bet (replace all votes)
+      await Vote.deleteMany({ userId: decoded.userId, betId: bet._id });
+
+      // Create all new votes
+      const voteDocuments = votes.map((vote: any) => {
+        const optionIndex = bet.options.findIndex((opt: any) => 
+          opt._id.toString() === vote.optionId || 
+          `${bet._id}-option-${bet.options.indexOf(opt) + 1}` === vote.optionId
+        );
+        
+        return {
+          userId: decoded.userId,
+          username: user.username,
+          betId: bet._id,
+          optionId: bet.options[optionIndex]._id,
+          stake: vote.stake,
+          timestamp: new Date()
+        };
+      });
+
+      await Vote.insertMany(voteDocuments);
+      return Response.json({ message: 'Votes placed successfully' });
+    }
+
+    // Single vote logic (existing code)
     if (!optionId || !stake) {
       return Response.json({ error: 'Option ID and stake are required' }, { status: 400 });
     }
@@ -117,7 +205,7 @@ export async function POST(
       return Response.json({ message: 'Vote placed successfully' });
       
     } else {
-      // Multi-vote logic - allow multiple votes on different options
+      // Multi-vote logic - allow multiple votes on different options (legacy single-vote-at-a-time support)
       const existingVoteOnOption = existingVotes.find(vote => 
         vote.optionId.toString() === bet.options[optionIndex]._id.toString()
       );
