@@ -148,14 +148,22 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
         if (settledBets.length > 0) {
           const resultPromises = settledBets.map(async (bet: Bet) => {
             try {
+              // Debug token before API call
+              console.log(`Fetching payouts for bet ${bet.id}, token exists:`, !!token);
+              
               const resultResponse = await fetch(`/api/bets/${bet.id}/payouts`, {
                 headers: {
                   'Authorization': `Bearer ${token}`,
                 },
               });
+              
+              console.log(`Payouts response for bet ${bet.id}:`, resultResponse.status);
+              
               if (resultResponse.ok) {
                 const resultData = await resultResponse.json();
                 return { betId: bet.id, result: resultData.result };
+              } else {
+                console.error(`Payouts failed for bet ${bet.id}:`, await resultResponse.text());
               }
             } catch (error) {
               console.error(`Failed to fetch results for bet ${bet.id}:`, error);
@@ -490,12 +498,18 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   // Calculate member profit/loss for this group
   const calculateMemberProfit = async (memberId: string) => {
     try {
+      // Debug token before API call
+      console.log('Token for calculateMemberProfit:', token ? 'exists' : 'missing');
+      console.log('User ID:', user?.id);
+      
       const response = await fetch(`/api/users/${memberId}/bets`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
+      console.log('Member profit response status:', response.status);
+      
       if (response.ok) {
         const userBets = await response.json();
         
@@ -519,7 +533,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
           totalPayouts,
           netProfit,
           totalBets: groupBets.length,
-          settledBets: settledBets.length
+          settledBets: groupBets.filter((bet: any) => bet.status === 'settled').length
         };
       }
     } catch (error) {
