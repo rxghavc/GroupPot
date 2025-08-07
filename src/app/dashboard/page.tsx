@@ -356,7 +356,7 @@ function DashboardContent({ user, token }: { user: any; token: string }) {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
-                  Welcome to FriendsSplit!
+                  Welcome to GroupPot!
                 </h3>
                 <p className="text-sm text-blue-700 dark:text-blue-300 mt-2 max-w-2xl mx-auto">
                   Ready to test your prediction skills? Join betting groups with your friends, place strategic wagers, and see who comes out on top. 

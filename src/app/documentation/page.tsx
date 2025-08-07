@@ -25,10 +25,10 @@ export default function DocumentationPage() {
                 <section>
                   <h2 className="text-xl font-semibold mb-2">App Overview</h2>
                   <p className="text-muted-foreground mb-2">
-                    FriendsSplit is a social betting platform designed to bring friends and family together through friendly wagers and group challenges. The inspiration for this project comes from my father, who used polling systems on WhatsApp group chats in the past and he soon realised how ineffective it was. Building this website (and hopefully app in the future) is my way of sharing something special with him: a place where he and his friends can enjoy a little friendly competition, keep track of their bets, and celebrate their wins (or laugh off their losses) together.
+                    GroupPot is a social betting platform designed to bring friends and family together through friendly wagers and group challenges. The inspiration for this project comes from my father, who used polling systems on WhatsApp group chats in the past and he soon realised how ineffective it was. Building this website (and hopefully app in the future) is my way of sharing something special with him: a place where he and his friends can enjoy a little friendly competition, keep track of their bets, and celebrate their wins (or laugh off their losses) together.
                   </p>
                   <p className="text-muted-foreground mb-2">
-                    At its heart, FriendsSplit is about connection. Whether you're betting on sports, trivia, or just who can finish their chores first, the app makes it easy to create groups, place bets, and track results. It's not about the money, it's about the memories, the banter, and the joy of sharing moments with people you care about. So go ahead, invite your friends, start a group, and let the games begin!
+                    At its heart, GroupPot is about connection. Whether you're betting on sports, trivia, or just who can finish their chores first, the app makes it easy to create groups, place bets, and track results. It's not about the money, it's about the memories, the banter, and the joy of sharing moments with people you care about. So go ahead, invite your friends, start a group, and let the games begin!
                   </p>
                 </section>
                 <section>
@@ -229,7 +229,7 @@ export default function DocumentationPage() {
                 <section>
                   <h3 className="text-lg font-semibold mb-2">Overview</h3>
                   <p className="text-muted-foreground mb-2">
-                    Authentication is the gatekeeper for your FriendsSplit experience. It keeps your account private, your bets secure, and your groups protected. With simple sign up and login, you can focus on the fun while we handle the security behind the scenes.
+                    Authentication is the gatekeeper for your GroupPot experience. It keeps your account private, your bets secure, and your groups protected. With simple sign up and login, you can focus on the fun while we handle the security behind the scenes.
                   </p>
                 </section>
                 <section>
@@ -264,9 +264,9 @@ export default function DocumentationPage() {
             <TabsContent value="faq">
               <h2 className="text-xl font-semibold mb-2">Frequently Asked Questions (FAQs)</h2>
               <Accordion type="single" collapsible>
-                <AccordionItem value="what-is-friendssplit">
-                  <AccordionTrigger>What is FriendsSplit and who is it for?</AccordionTrigger>
-                  <AccordionContent>FriendsSplit is a social betting platform for friends and family to create groups, place friendly bets, and track results. It's designed for anyone who wants to add a little fun and friendly competition to their group chats or gatherings.</AccordionContent>
+                <AccordionItem value="what-is-GroupPot">
+                  <AccordionTrigger>What is GroupPot and who is it for?</AccordionTrigger>
+                  <AccordionContent>GroupPot is a social betting platform for friends and family to create groups, place friendly bets, and track results. It's designed for anyone who wants to add a little fun and friendly competition to their group chats or gatherings.</AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="how-to-get-started">
                   <AccordionTrigger>How do I get started?</AccordionTrigger>
@@ -289,12 +289,12 @@ export default function DocumentationPage() {
                   <AccordionContent>Yes. All sensitive data is encrypted and protected by JWT authentication. Passwords are securely hashed and never stored in plain text. Only you can access your account and bets.</AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="mobile-support">
-                  <AccordionTrigger>Can I use FriendsSplit on my phone?</AccordionTrigger>
+                  <AccordionTrigger>Can I use GroupPot on mobile?</AccordionTrigger>
                   <AccordionContent>Absolutely! The app is fully responsive and optimized for mobile devices, so you can bet and manage groups on the go.</AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="contact-support">
                   <AccordionTrigger>How can I contact support or report a bug?</AccordionTrigger>
-                  <AccordionContent>Use the Support & Contact section at the bottom of this page to reach out via email or LinkedIn. I'm always happy to help and improve FriendsSplit!</AccordionContent>
+                  <AccordionContent>Use the Support & Contact section at the bottom of this page to reach out via email or LinkedIn. I'm always happy to help and improve GroupPot!</AccordionContent>
                 </AccordionItem>
               </Accordion>
             </TabsContent>
@@ -308,7 +308,7 @@ export default function DocumentationPage() {
         <CardContent>
           <div className="space-y-4">
             <p className="text-muted-foreground">
-              If you have questions, feedback, or want to report a bug, feel free to reach out! I'm always happy to help and improve FriendsSplit for everyone.
+              If you have questions, feedback, or want to report a bug, feel free to reach out! I'm always happy to help and improve GroupPot for everyone.
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>
@@ -318,7 +318,7 @@ export default function DocumentationPage() {
                 <span className="font-semibold">LinkedIn:</span> <a href="https://www.linkedin.com/in/raghavcommandur/" target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">linkedin.com/in/raghavcommandur</a>
               </li>
             </ul>
-            <p className="text-muted-foreground text-sm">I'll do my best to respond quickly and address any issues or suggestions you have. Thanks for using FriendsSplit!</p>
+            <p className="text-muted-foreground text-sm">I'll do my best to respond quickly and address any issues or suggestions you have. Thanks for using GroupPot!</p>
           </div>
         </CardContent>
       </Card>

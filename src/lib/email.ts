@@ -36,12 +36,12 @@ export function generatePasswordResetEmail(email: string, resetToken: string): E
   
   return {
     to: email,
-    subject: 'Password Reset Request - FriendsSplit',
+    subject: 'Password Reset Request - GroupPot',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333;">Password Reset Request</h2>
         <p>Hello,</p>
-        <p>You requested a password reset for your FriendsSplit account.</p>
+        <p>You requested a password reset for your GroupPot account.</p>
         <p>Click the button below to reset your password:</p>
         <div style="text-align: center; margin: 30px 0;">
           <a href="${resetUrl}" 
@@ -55,7 +55,7 @@ export function generatePasswordResetEmail(email: string, resetToken: string): E
         <p>If you didn't request this password reset, please ignore this email.</p>
         <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
         <p style="color: #666; font-size: 12px;">
-          This email was sent from FriendsSplit. Please do not reply to this email.
+          This email was sent from GroupPot. Please do not reply to this email.
         </p>
       </div>
     `,
@@ -65,12 +65,12 @@ export function generatePasswordResetEmail(email: string, resetToken: string): E
 export function generateWelcomeEmail(email: string, username: string): EmailOptions {
   return {
     to: email,
-    subject: 'Welcome to FriendsSplit!',
+    subject: 'Welcome to GroupPot!',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Welcome to FriendsSplit!</h2>
+        <h2 style="color: #333;">Welcome to GroupPot!</h2>
         <p>Hello ${username},</p>
-        <p>Welcome to FriendsSplit! Your account has been successfully created.</p>
+        <p>Welcome to GroupPot! Your account has been successfully created.</p>
         <p>You can now:</p>
         <ul>
           <li>Create and join betting groups</li>
@@ -87,7 +87,7 @@ export function generateWelcomeEmail(email: string, username: string): EmailOpti
         <p>Happy betting!</p>
         <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
         <p style="color: #666; font-size: 12px;">
-          This email was sent from FriendsSplit. Please do not reply to this email.
+          This email was sent from GroupPot. Please do not reply to this email.
         </p>
       </div>
     `,
