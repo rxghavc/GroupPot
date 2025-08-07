@@ -52,8 +52,8 @@ export default function UserBetsPage() {
           </div>
 
           {/* Financial Overview Cards Skeleton */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {[1, 2, 3, 4].map((i) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {[1, 2, 3].map((i) => (
               <Card key={i} className="animate-pulse">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <div className="h-4 bg-muted rounded w-20"></div>
@@ -177,7 +177,6 @@ function BetsContent({ user, token }: { user: any; token: string }) {
   );
   
   const netProfit = totalWinnings - totalPastStakes;
-  const winRate = pastBets.filter(bet => bet.result !== 'refund').length > 0 ? (pastBets.filter(bet => bet.result === "won").length / pastBets.filter(bet => bet.result !== 'refund').length) * 100 : 0;
 
   // Chart data preparation
   const chartData = pastBets
@@ -261,7 +260,7 @@ function BetsContent({ user, token }: { user: any; token: string }) {
       ) : viewMode === "overview" ? (
         <>
           {/* Financial Overview Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Active Stakes</CardTitle>
@@ -290,19 +289,6 @@ function BetsContent({ user, token }: { user: any; token: string }) {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {((netProfit / totalLifetimeStake) * 100).toFixed(1)}% ROI
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-                <Trophy className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{winRate.toFixed(1)}%</div>
-                <p className="text-xs text-muted-foreground">
-                  {pastBets.filter(bet => bet.result === "won").length} of {pastBets.length} won
                 </p>
               </CardContent>
             </Card>

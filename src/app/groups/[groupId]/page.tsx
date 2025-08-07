@@ -514,20 +514,10 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
         
         const netProfit = totalPayouts - totalStakes;
         
-        // Calculate win rate more accurately
-        const settledBets = groupBets.filter((bet: any) => bet.status === 'settled');
-        const settledNonRefundBets = settledBets.filter((bet: any) => bet.result !== 'refund');
-        const wonBets = settledBets.filter((bet: any) => bet.result === 'won');
-        
-        const winRate = settledNonRefundBets.length > 0 
-          ? (wonBets.length / settledNonRefundBets.length) * 100 
-          : 0;
-        
         return {
           totalStakes,
           totalPayouts,
           netProfit,
-          winRate,
           totalBets: groupBets.length,
           settledBets: settledBets.length
         };
@@ -540,7 +530,6 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
       totalStakes: 0,
       totalPayouts: 0,
       netProfit: 0,
-      winRate: 0,
       totalBets: 0,
       settledBets: 0
     };
