@@ -7,6 +7,7 @@ import { useEffect, useState } from "react"
 import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { BarChart3, Users, TrendingUp, Plus, Search } from "lucide-react"
+import { FaUserFriends } from "react-icons/fa"
 
 interface DashboardStats {
   totalGroups: number;
@@ -138,6 +139,7 @@ function DashboardContent({ user, token }: { user: any; token: string }) {
     ([url, token]: [string, string]) => fetcher(url, token)
   );
 
+  /* Keeping this code for future use - Recent Bets Table functionality
   const {
     data: userBets,
     isLoading: userBetsLoading,
@@ -192,8 +194,29 @@ function DashboardContent({ user, token }: { user: any; token: string }) {
         };
       })
     : [];
+  */
 
-  const loading = statsLoading || userBetsLoading;
+  // Simplified version without user bets data
+  const {
+    data: userBets,
+    isLoading: userBetsLoading,
+  } = useSWR<any[]>(
+    [`/api/users/${user.id}/bets`, token],
+    ([url, token]: [string, string]) => fetcher(url, token)
+  );
+
+  // Calculate profit from user bets data (payout minus stake)
+  const totalProfit = userBets 
+    ? userBets
+        .filter((bet: any) => bet.result === 'won' && bet.status === 'settled')
+        .reduce((sum: number, bet: any) => {
+          const payout = parseFloat(bet.payout);
+          const totalStake = bet.userVotes.reduce((stakeSum: number, vote: any) => stakeSum + vote.stake, 0);
+          return sum + (payout - totalStake); // Profit = payout - stake
+        }, 0)
+    : 0;
+
+  const loading = statsLoading;
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-4">
@@ -321,13 +344,26 @@ function DashboardContent({ user, token }: { user: any; token: string }) {
             </CardContent>
           </Card>
         </div>
-        <Card className="overflow-x-auto">
-          <CardHeader>
-            <CardTitle>Recent Bets</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">A list of your most recent bets, including wager, payout, and status.</p>
-          </CardHeader>
-          <CardContent>
-            <DashboardTable data={dashboardTableData} loading={userBetsLoading} />
+        
+        {/* Welcome Message Card */}
+        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-3">
+              <div className="flex justify-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50">
+                  <FaUserFriends className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+                  Welcome to FriendsSplit!
+                </h3>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mt-2 max-w-2xl mx-auto">
+                  Ready to test your prediction skills? Join betting groups with your friends, place strategic wagers, and see who comes out on top. 
+                  Track your performance, analyze your wins, and enjoy the thrill of friendly competition!
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
