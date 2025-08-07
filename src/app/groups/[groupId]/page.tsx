@@ -4,7 +4,7 @@ import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Plus, Users, PoundSterling, Eye, Copy, Check, Trophy, ChevronLeft, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
+import { Plus, Users, PoundSterling, Eye, Copy, Check, Trophy, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Files } from "lucide-react";
 import { Group, Bet, BetResult } from "@/lib/types";
 import { BetCard } from "@/components/ui/BetCard";
 import { BetForm } from "@/components/ui/BetForm";
@@ -66,6 +66,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   const [pendingDeleteBet, setPendingDeleteBet] = useState<Bet | null>(null);
   const [memberProfits, setMemberProfits] = useState<Map<string, any>>(new Map());
   const [loadingProfits, setLoadingProfits] = useState(false);
+  const [cloneBetData, setCloneBetData] = useState<any>(null);
 
   // Auto-refresh functionality
   const {
@@ -188,6 +189,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
 
   const handleCloseCreateBet = () => {
     setShowCreateBet(false);
+    setCloneBetData(null); // Clear clone data when closing
     resetUserActivity(); // Resume auto-refresh
   };
 
@@ -253,6 +255,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
         // Do not append the new bet; always refresh from backend
         fetchGroupData();
         setShowCreateBet(false);
+        setCloneBetData(null); // Clear clone data after successful creation
         resetUserActivity(); // Resume auto-refresh after successful creation
       } else {
         const error = await response.json();
@@ -635,6 +638,20 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
     setDeleteDialogOpen(true);
   };
 
+  // Handle bet cloning
+  const handleCloneBet = (bet: Bet) => {
+    setCloneBetData({
+      title: `${bet.title} (Copy)`,
+      description: bet.description || "",
+      options: bet.options.map(option => option.text),
+      minStake: bet.minStake,
+      maxStake: bet.maxStake,
+      votingType: bet.votingType,
+      multiVoteType: bet.multiVoteType
+    });
+    setShowCreateBet(true);
+  };
+
   const handleDeleteConfirmed = async () => {
     if (!pendingDeleteBet) return;
     
@@ -945,6 +962,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
         open={showCreateBet}
         onSubmit={handleCreateBet}
         onCancel={handleCloseCreateBet}
+        initialValues={cloneBetData}
       />
 
       {/* Bets Section */}
@@ -1143,13 +1161,25 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                                   </Button>
                                 )}
                                 {isModerator && (
-                                  <Button 
-                                    variant="destructive" 
-                                    size="sm"
-                                    onClick={() => handleDeleteBet(bet.id)}
-                                  >
-                                    Delete
-                                  </Button>
+                                  <>
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => handleCloneBet(bet)}
+                                      className="text-blue-600 hover:text-blue-700"
+                                      title="Clone this bet"
+                                    >
+                                      <Files className="w-3 h-3 mr-1" />
+                                      Clone
+                                    </Button>
+                                    <Button 
+                                      variant="destructive" 
+                                      size="sm"
+                                      onClick={() => handleDeleteBet(bet.id)}
+                                    >
+                                      Delete
+                                    </Button>
+                                  </>
                                 )}
                               </div>
                             </td>
