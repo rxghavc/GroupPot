@@ -259,11 +259,6 @@ function DashboardContent({ user, token }: { user: any; token: string }) {
                     {loading ? "Loading..." : "£" + (userBets ? Math.max(...userBets.filter((bet: any) => bet.result === 'won').map((bet: any) => parseFloat(bet.payout) - bet.userVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0)), 0).toFixed(2) : "0.00")}
                   </span>
                 </span>
-                <span className="text-sm text-muted-foreground">
-                  Win rate: <span className="font-semibold text-foreground">
-                    {loading ? "Loading..." : userBets && userBets.length > 0 ? Math.round((userBets.filter((bet: any) => bet.result === 'won').length / userBets.length) * 100) + "%" : "0%"}
-                  </span>
-                </span>
               </div>
             </CardContent>
           </Card>
