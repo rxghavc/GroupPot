@@ -80,9 +80,9 @@ export async function POST(req: NextRequest) {
       multiVoteType = 'exact_match'
     } = body;
 
-    if (!groupId || !title || !description || !options || !deadline) {
+    if (!groupId || !title || !options || !deadline) {
       return Response.json({ 
-        error: 'Group ID, title, description, options, and deadline are required' 
+        error: 'Group ID, title, options, and deadline are required' 
       }, { status: 400 });
     }
 
@@ -131,10 +131,10 @@ export async function POST(req: NextRequest) {
       votes: [],
     }));
 
-    const bet = new Bet({
+    // Prepare bet data, only include description if it's not empty
+    const betData: any = {
       groupId,
       title,
-      description,
       options: betOptions,
       deadline: new Date(deadline),
       status: 'open',
@@ -143,7 +143,14 @@ export async function POST(req: NextRequest) {
       minStake: Math.max(1, minStake || group.minStake),
       maxStake: Math.max(1, maxStake || group.maxStake),
       createdBy: decoded.userId,
-    });
+    };
+
+    // Only add description if it exists and is not empty
+    if (description && description.trim()) {
+      betData.description = description.trim();
+    }
+
+    const bet = new Bet(betData);
 
     await bet.save();
 

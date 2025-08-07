@@ -226,7 +226,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
 
   async function handleCreateBet(betData: {
     title: string;
-    description: string;
+    description?: string;
     options: string[];
     deadline: string;
     minStake: number;

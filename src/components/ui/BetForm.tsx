@@ -22,7 +22,7 @@ interface BetFormProps {
   open: boolean;
   onSubmit: (betData: {
     title: string;
-    description: string;
+    description?: string;
     options: string[];
     deadline: string;
     minStake: number;
@@ -113,7 +113,7 @@ export function BetForm({ groupId, groupMinStake, groupMaxStake, open, onSubmit,
 
     onSubmit({
       title: title.trim(),
-      description: description.trim(),
+      description: description.trim() || undefined,
       options: options.map(opt => opt.trim()),
       deadline,
       minStake,
