@@ -385,7 +385,7 @@ export function BetCard({
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">
                     {bet.multiVoteType === 'partial_match' 
-                      ? 'Your stake was split across selected options. You win based on the portion on the winning option.'
+                      ? 'You staked on each selected option individually. You win based on the winning options.'
                       : 'You need ALL selected options to win to get your stake back plus winnings.'
                     }
                   </div>
@@ -403,7 +403,7 @@ export function BetCard({
               User Vote Combinations:
               <span className="text-xs text-muted-foreground ml-2 font-normal">
                 {bet.multiVoteType === 'partial_match' 
-                  ? '(Stakes split across options)'
+                  ? '(Stake per option)'
                   : '(Must match ALL to win)'
                 }
               </span>
