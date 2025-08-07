@@ -24,7 +24,7 @@ interface BetCardProps {
   groupMinStake: number;
   groupMaxStake: number;
   isModerator: boolean;
-  onVote: (voteData: { optionId: string; stake: number }) => void;
+  onVote: (voteData: { optionId: string; stake: number } | { votes: { optionId: string; stake: number }[] }) => void;
   onSettle: (bet: Bet) => void;
   result?: BetResult;
   user?: { id: string };
@@ -63,7 +63,7 @@ export function BetCard({
   const isSettled = bet.status === 'settled';
 
   // In BetCard, find the user's current vote for this bet and shape as { optionId, stake }
-  const userVote = user
+  const userVote = user && bet.votingType === 'single'
     ? (() => {
         for (const option of bet.options) {
           if (option.votes) {
@@ -74,6 +74,22 @@ export function BetCard({
           }
         }
         return undefined;
+      })()
+    : undefined;
+
+  // For multi-vote bets, collect all user votes
+  const userVotes = user && bet.votingType === 'multi'
+    ? (() => {
+        const votes: { optionId: string; stake: number }[] = [];
+        for (const option of bet.options) {
+          if (option.votes) {
+            const found = option.votes.find(v => v.userId === user.id);
+            if (found) {
+              votes.push({ optionId: option.id, stake: found.stake });
+            }
+          }
+        }
+        return votes.length > 0 ? votes : undefined;
       })()
     : undefined;
 
@@ -91,7 +107,8 @@ export function BetCard({
     return "Open";
   }
 
-  function handleVote(voteData: { optionId: string; stake: number }) {
+  function handleVote(voteData: { optionId: string; stake: number } | { votes: { optionId: string; stake: number }[] }) {
+    // Pass the vote data directly to the parent - it will handle batch vs single voting
     onVote(voteData);
     setShowVoteForm(false);
   }
@@ -306,7 +323,7 @@ export function BetCard({
             const isWinning = result?.winningOptionId === option.id || 
                              (result?.winningOptionIds && result.winningOptionIds.some((winId: string) => {
                                // Convert between different ID formats if needed
-                               return winId === option.id || winId === option._id?.toString();
+                               return winId === option.id;
                              }));
             const userVoted = user && option.votes && option.votes.some(v => v.userId === user.id);
             
@@ -462,7 +479,7 @@ export function BetCard({
         <div className="flex gap-2">
           {canVote && (
             <Button onClick={() => setShowVoteForm(true)}>
-              Place Vote
+              {(userVote || (userVotes && userVotes.length > 0)) ? 'Change Vote' : 'Place Vote'}
             </Button>
           )}
           
@@ -517,6 +534,7 @@ export function BetCard({
               onSubmit={handleVote}
               onCancel={() => setShowVoteForm(false)}
               userVote={userVote}
+              userVotes={userVotes}
               canVote={canVote}
               isExpired={isExpired}
             />

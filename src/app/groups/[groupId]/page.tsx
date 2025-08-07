@@ -267,10 +267,51 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   // State for handling multi-vote debouncing
   const [voteTimeout, setVoteTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  async function handleVote(voteData: { optionId: string; stake: number }) {
+  async function handleVote(voteData: { optionId: string; stake: number } | { votes: { optionId: string; stake: number }[] }) {
     try {
+      // Check if this is a batch vote
+      if ('votes' in voteData) {
+        // Batch voting for multi-vote bets
+        const votes = voteData.votes;
+        if (votes.length === 0) return;
+        
+        // Find the bet that contains these options
+        const bet = bets.find(b => votes.some(vote => b.options.some(opt => opt.id === vote.optionId)));
+        if (!bet) {
+          showAlert('Bet not found for these options');
+          return;
+        }
+
+        const response = await fetch(`/api/bets/${bet.id}/vote`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ votes: votes }),
+        });
+
+        if (response.ok) {
+          // Refresh the bets to show updated vote counts
+          fetchGroupData();
+          // Also refresh the user's bets page
+          if (user && token) {
+            mutate([`/api/users/${user.id}/bets`, token]);
+          }
+          showAlert('Votes placed successfully!', 'success');
+        } else {
+          const error = await response.json();
+          console.error('Batch vote failed:', error);
+          showAlert(error.error || 'Failed to place votes');
+        }
+        return;
+      }
+
+      // Single vote logic (existing code)
+      const singleVoteData = voteData as { optionId: string; stake: number };
+      
       // Find the bet that contains this option
-      const bet = bets.find(b => b.options.some(opt => opt.id === voteData.optionId));
+      const bet = bets.find(b => b.options.some(opt => opt.id === singleVoteData.optionId));
       if (!bet) {
         showAlert('Bet not found for this option');
         return;
@@ -282,7 +323,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(voteData),
+        body: JSON.stringify(singleVoteData),
       });
 
       if (response.ok) {
