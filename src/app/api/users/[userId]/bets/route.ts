@@ -64,7 +64,7 @@ export async function GET(
           ).sort();
           
           // Get all votes for this bet to check if anyone won
-          const allBetVotes = votes.filter((v: any) => v.betId.toString() === bet._id.toString());
+          const allBetVotes = await Vote.find({ betId: bet._id }).lean();
           const votesByUser = new Map();
           allBetVotes.forEach((vote: any) => {
             const userId = vote.userId.toString();
@@ -120,8 +120,8 @@ export async function GET(
           const winningOptionIndex = bet.winningOption;
           const winningOptionId = bet.options[winningOptionIndex]?._id?.toString();
           
-          // Check if anyone voted on the winning option
-          const allBetVotes = votes.filter((v: any) => v.betId.toString() === bet._id.toString());
+          // Check if anyone voted on the winning option across ALL users in the bet
+          const allBetVotes = await Vote.find({ betId: bet._id }).lean();
           const hasWinnersOnOption = allBetVotes.some((v: any) => v.optionId.toString() === winningOptionId);
           
           if (!hasWinnersOnOption) {
@@ -130,7 +130,7 @@ export async function GET(
             result = 'refund';
             payout = userVotes.reduce((sum: number, v: any) => sum + v.stake, 0);
           } else {
-            // Normal single vote logic
+            // Normal single vote logic - check if THIS USER voted on winning option
             const hasWinningVote = userVotes.some((v: any) => v.optionId === winningOptionId);
             result = hasWinningVote ? 'won' : 'lost';
           }
