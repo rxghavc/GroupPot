@@ -21,7 +21,7 @@ export function PayoutTable({ bet, result }: PayoutTableProps) {
               <span className="text-2xl">ℹ️</span>
               <span>Partial Match Betting</span>
               <Badge variant="outline" className="bg-blue-100 text-blue-800 px-3 py-1">
-                Stake Split Mode
+                {isPartialMatch && (result as any).winningOptionTexts?.length > 1 ? 'Multi-Option Win' : 'Stake Per Option'}
               </Badge>
             </CardTitle>
           </CardHeader>
@@ -152,7 +152,7 @@ export function PayoutTable({ bet, result }: PayoutTableProps) {
                           <div className="text-gray-700">
                             <div className="font-medium">£{((winner as any).totalOriginalStake).toFixed(2)}</div>
                             <div className="text-xs text-gray-500 mt-1">
-                              (Split across {Math.round((winner as any).totalOriginalStake / winner.stake)} options)
+                              (Across {(winner as any).totalOptionsCount || Math.round((winner as any).totalOriginalStake / (winner.stake > 0 ? Math.min(winner.stake, (winner as any).totalOriginalStake) : 1))} options)
                             </div>
                           </div>
                         </td>
@@ -165,7 +165,7 @@ export function PayoutTable({ bet, result }: PayoutTableProps) {
             {isPartialMatch && !isRefund && (
               <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
                 <p className="text-sm text-green-700 leading-relaxed">
-                  <strong>Partial Match Breakdown:</strong> Winners receive their winning portion back plus a share of all losing stakes (including non-winning portions from other winners).
+                  <strong>Partial Match Breakdown:</strong> Winners receive their stake back from {result.winningOptionTexts?.length > 1 ? 'any winning options' : 'the winning option'} plus a share of all losing stakes (including non-winning portions from other winners).
                 </p>
               </div>
             )}
