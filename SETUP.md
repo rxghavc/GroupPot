@@ -16,7 +16,7 @@ JWT_SECRET=49aa564ea09390f8dd2d5aeb0d1558c78c568a6f672e4abae188f40f08574ec396dcc
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # MongoDB Atlas Connection String (includes database name)
-MONGODB_URI=mongodb+srv://rcommandur:Cu44ent2005@cluster0.vyw4kan.mongodb.net/friendssplit?retryWrites=true&w=majority&appName=Cluster0
+MONGODB_URI=mongodb+srv://rcommandur:Cu44ent2005@cluster0.vyw4kan.mongodb.net/GroupPot?retryWrites=true&w=majority&appName=Cluster0
 ```
 
 ## MongoDB Atlas Setup
@@ -53,12 +53,12 @@ MONGODB_URI=mongodb+srv://rcommandur:Cu44ent2005@cluster0.vyw4kan.mongodb.net/fr
 3. Choose "Connect your application"
 4. Select "Node.js" driver
 5. Copy the connection string and replace username/password
-6. **Important**: Add `/friendssplit` after `.net/` to specify the database name
+6. **Important**: Add `/GroupPot` after `.net/` to specify the database name
 
 ## Database Creation
 
 **You don't need to manually create a database!** Mongoose will automatically:
-- Create the `friendssplit` database when you first save data
+- Create the `GroupPot` database when you first save data
 - Create collections (`users`, `groups`, `bets`) when you first insert documents
 - Set up proper indexes and validation
 

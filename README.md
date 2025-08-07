@@ -1,4 +1,4 @@
-# FriendsSplit - Social Betting Platform
+# GroupPot - Social Betting Platform
 
 A sophisticated group betting platform built with Next.js that enables friends and communities to create and participate in custom betting pools with advanced settlement logic and comprehensive analytics.
 

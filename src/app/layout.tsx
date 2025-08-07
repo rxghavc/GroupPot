@@ -18,11 +18,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FriendsSplit | Bet with Friends, Split Winnings",
+  title: "GroupPot | Bet with Friends, Split Winnings",
   description:
-    "FriendsSplit lets you create private groups, place bets, and split winnings with friends. Manage your groups, bets, and payouts easily.",
+    "GroupPot lets you create private groups, place bets, and split winnings with friends. Manage your groups, bets, and payouts easily.",
   keywords: [
-    "FriendsSplit",
+    "GroupPot",
     "betting",
     "groups",
     "split winnings",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     "dashboard",
     "friends",
   ],
-  authors: [{ name: "FriendsSplit Team" }],
+  authors: [{ name: "GroupPot Team" }],
   creator: "Sai Raghavan Commandur",
 };
 
