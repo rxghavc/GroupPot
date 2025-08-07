@@ -853,62 +853,86 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
 
       {/* View Members Dialog */}
       <Dialog open={showMembers} onOpenChange={handleCloseMembers}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Group Members ({group.members.length})</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            {group.members.map((member: any) => {
-              const memberId = member._id || member.id;
-              const isOwner = group.ownerId === memberId;
-              const isMod = group.moderators.includes(memberId);
-              const canManage = isModerator && !isOwner && memberId !== user?.id;
-              const profitData = memberProfits.get(memberId);
-              
-              return (
-                <div key={memberId} className="flex items-center justify-between p-4 border rounded-lg bg-card">
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{member.username}</span>
-                        {isOwner && (
-                          <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
-                            Owner
-                          </span>
-                        )}
-                        {isMod && !isOwner && (
-                          <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                            Moderator
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-sm text-muted-foreground">{member.email}</span>
-                    </div>
-                    
-                    {/* Member Profit Stats */}
-                    <div className="flex items-center gap-6 text-sm">
-                      {loadingProfits ? (
-                        <div className="flex items-center gap-2">
-                          <div className="h-4 w-16 bg-muted rounded animate-pulse"></div>
-                          <div className="h-4 w-16 bg-muted rounded animate-pulse"></div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px]">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-3 px-4 font-medium">Member</th>
+                  <th className="text-left py-3 px-4 font-medium">Role</th>
+                  <th className="text-center py-3 px-4 font-medium">Total Bets</th>
+                  <th className="text-center py-3 px-4 font-medium">Total Staked</th>
+                  <th className="text-center py-3 px-4 font-medium">Net P&L</th>
+                  {isModerator && (
+                    <th className="text-center py-3 px-4 font-medium">Actions</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {group.members.map((member: any) => {
+                  const memberId = member._id || member.id;
+                  const isOwner = group.ownerId === memberId;
+                  const isMod = group.moderators.includes(memberId);
+                  const canManage = isModerator && !isOwner && memberId !== user?.id;
+                  const profitData = memberProfits.get(memberId);
+                  
+                  return (
+                    <tr key={memberId} className="border-b hover:bg-muted/50">
+                      {/* Member Info */}
+                      <td className="py-3 px-4">
+                        <div>
+                          <div className="font-medium">{member.username}</div>
+                          <div className="text-sm text-muted-foreground">{member.email}</div>
                         </div>
+                      </td>
+                      
+                      {/* Role */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1">
+                          {isOwner && (
+                            <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full font-medium">
+                              Owner
+                            </span>
+                          )}
+                          {isMod && !isOwner && (
+                            <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full font-medium">
+                              Moderator
+                            </span>
+                          )}
+                          {!isOwner && !isMod && (
+                            <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full font-medium">
+                              Member
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      
+                      {/* Stats */}
+                      {loadingProfits ? (
+                        <>
+                          <td className="py-3 px-4 text-center">
+                            <div className="h-4 w-8 bg-muted rounded animate-pulse mx-auto"></div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <div className="h-4 w-16 bg-muted rounded animate-pulse mx-auto"></div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <div className="h-4 w-16 bg-muted rounded animate-pulse mx-auto"></div>
+                          </td>
+                        </>
                       ) : profitData ? (
                         <>
-                          <div className="text-center">
-                            <div className="text-xs text-muted-foreground">Total Bets</div>
-                            <div className="font-medium">{profitData.totalBets}</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-xs text-muted-foreground">Win Rate</div>
-                            <div className="font-medium">{profitData.winRate.toFixed(1)}%</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-xs text-muted-foreground">Total Staked</div>
-                            <div className="font-medium">£{profitData.totalStakes.toFixed(2)}</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-xs text-muted-foreground">Net P&L</div>
-                            <div className={`font-medium flex items-center gap-1 ${
+                          <td className="py-3 px-4 text-center font-medium">
+                            {profitData.totalBets}
+                          </td>
+                          <td className="py-3 px-4 text-center font-medium">
+                            £{profitData.totalStakes.toFixed(2)}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <div className={`font-medium flex items-center justify-center gap-1 ${
                               profitData.netProfit >= 0 ? 'text-green-600' : 'text-red-600'
                             }`}>
                               {profitData.netProfit >= 0 ? (
@@ -918,38 +942,49 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                               )}
                               {profitData.netProfit >= 0 ? '+' : ''}£{profitData.netProfit.toFixed(2)}
                             </div>
-                          </div>
+                          </td>
                         </>
                       ) : (
-                        <div className="text-xs text-muted-foreground">No betting data</div>
+                        <>
+                          <td className="py-3 px-4 text-center text-muted-foreground">-</td>
+                          <td className="py-3 px-4 text-center text-muted-foreground">-</td>
+                          <td className="py-3 px-4 text-center text-muted-foreground">-</td>
+                        </>
                       )}
-                    </div>
-                  </div>
-                  
-                  {canManage && (
-                    <div className="flex items-center gap-2 ml-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleToggleModerator(memberId, isMod)}
-                        className="text-xs"
-                      >
-                        {isMod ? 'Demote' : 'Promote'}
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleRemoveMember(memberId)}
-                        disabled={removingMemberId === memberId}
-                        className="text-xs"
-                      >
-                        {removingMemberId === memberId ? 'Removing...' : 'Remove'}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                      
+                      {/* Actions */}
+                      {isModerator && (
+                        <td className="py-3 px-4">
+                          {canManage ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleToggleModerator(memberId, isMod)}
+                                className="text-xs"
+                              >
+                                {isMod ? 'Demote' : 'Promote'}
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleRemoveMember(memberId)}
+                                disabled={removingMemberId === memberId}
+                                className="text-xs"
+                              >
+                                {removingMemberId === memberId ? 'Removing...' : 'Remove'}
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="text-center text-muted-foreground text-xs">-</div>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </DialogContent>
       </Dialog>
