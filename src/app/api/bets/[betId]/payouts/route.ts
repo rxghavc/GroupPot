@@ -176,6 +176,22 @@ export async function GET(
           losers: [],
           isRefund: true
         };
+      } else if (totalLosingStakes === 0) {
+        // Special case: All participants are winners (no losing stakes to redistribute)
+        // This happens when there's only one participant or everyone picked winning options
+        result = {
+          totalPool,
+          winningOptionIds: winningOptionIds,
+          winningOptionTexts: bet.winningOptions.map((index: number) => bet.options[index].text),
+          winners: winners.map((winner: any) => ({
+            userId: winner.userId,
+            username: winner.username,
+            stake: winner.stake,
+            payout: winner.stake // Just return their stake back
+          })),
+          losers: [],
+          isRefund: false
+        };
       } else {
         // Calculate additional info for partial match
         const betTypeInfo = bet.multiVoteType === 'partial_match' ? {
