@@ -148,8 +148,8 @@ export async function POST(
       });
 
       if (bet.multiVoteType === 'partial_match') {
-        // Situation A: Partial Match - Users vote on multiple options, but only ONE option wins
-        // Stakes are split across chosen options, only the portion on winning option counts
+        // Situation A: Partial Match - Users vote on multiple options, each with individual stakes
+        // Users win based on their stake on the winning option only
         
         if (uniqueWinningOptions.length > 1) {
           return Response.json({ error: 'Partial match bets can only have one winning option' }, { status: 400 });
@@ -164,19 +164,25 @@ export async function POST(
           
           if (winningVote) {
             // User has a vote on the winning option
-            // In partial match, stakes are distributed equally across options chosen
-            const userOptionCount = userVotes.length;
-            const stakePerOption = userTotalStake / userOptionCount;
+            // In partial match, each vote represents the full stake for that option
+            const winningStake = winningVote.stake;
             
-            // User wins based only on their stake portion on the winning option
+            // User wins based on their full stake on the winning option
             winners.push({
               userId: userId,
               username: userVotes[0].username,
-              stake: stakePerOption // Only the portion on the winning option
+              stake: winningStake // Full stake on the winning option
             });
             
-            // The remaining stake (on non-winning options) contributes to the losing pool
-            // but we don't create a separate loser entry for the same user
+            // The stakes on non-winning options contribute to the losing pool
+            const losingStake = userTotalStake - winningStake;
+            if (losingStake > 0) {
+              losers.push({
+                userId: userId,
+                username: userVotes[0].username,
+                stake: losingStake
+              });
+            }
           } else {
             // User didn't vote on winning option - all stake goes to losers
             losers.push({
@@ -187,17 +193,8 @@ export async function POST(
           }
         });
         
-        // Calculate total losing stakes (from pure losers + non-winning portions of winners)
-        const totalLosingStakesFromLosers = losers.reduce((sum, loser) => sum + loser.stake, 0);
-        const additionalLosingStakes = winners.reduce((sum, winner) => {
-          const userVotes = votesByUser.get(winner.userId);
-          const userTotalStake = userVotes.reduce((sum: number, vote: any) => sum + vote.stake, 0);
-          const userOptionCount = userVotes.length;
-          const stakePerOption = userTotalStake / userOptionCount;
-          return sum + (userTotalStake - stakePerOption); // Non-winning portion
-        }, 0);
-        
-        const totalLosingStakes = totalLosingStakesFromLosers + additionalLosingStakes;
+        // Calculate total losing stakes and winning stakes
+        const totalLosingStakes = losers.reduce((sum, loser) => sum + loser.stake, 0);
         const totalWinningStakes = winners.reduce((sum, winner) => sum + winner.stake, 0);
 
         // Calculate payouts for partial match

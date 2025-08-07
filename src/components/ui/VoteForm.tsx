@@ -47,7 +47,7 @@ export function VoteForm({ betId, options, minStake, maxStake, votingType, multi
         stake,
       });
     } else {
-      // Multi-vote logic - total stake split across selected options
+      // Multi-vote logic
       if (selectedOptions.length === 0) {
         alert("Please select at least one option");
         return;
@@ -56,15 +56,32 @@ export function VoteForm({ betId, options, minStake, maxStake, votingType, multi
       const effectiveMinStake = Math.max(1, minStake);
       const effectiveMaxStake = Math.max(1, maxStake);
 
+      // For partial match, stake is per option; for exact match, stake is total split
+      let totalStake;
+      let stakePerOption;
+      
+      if (multiVoteType === 'partial_match') {
+        // Stake applies to each option individually
+        stakePerOption = stake;
+        totalStake = stake * selectedOptions.length;
+        
+        // Check if total stake exceeds max
+        if (totalStake > effectiveMaxStake * selectedOptions.length) {
+          alert(`With ${selectedOptions.length} options selected, your total stake would be £${totalStake}. Please reduce your stake per option.`);
+          return;
+        }
+      } else {
+        // Exact match: stake is split across options
+        stakePerOption = stake / selectedOptions.length;
+        totalStake = stake;
+      }
+
       if (stake < effectiveMinStake || stake > effectiveMaxStake) {
         alert(`Stake must be between £${effectiveMinStake} and £${effectiveMaxStake}`);
         return;
       }
 
-      // Split the total stake across selected options
-      const stakePerOption = stake / selectedOptions.length;
-      
-      // Submit each selected option with its portion of the stake
+      // Submit each selected option with calculated stake
       for (const optionId of selectedOptions) {
         onSubmit({
           optionId: optionId,
@@ -98,7 +115,7 @@ export function VoteForm({ betId, options, minStake, maxStake, votingType, multi
               {votingType === 'multi' && (
                 <span className="text-xs text-muted-foreground ml-2">
                   {multiVoteType === 'partial_match' 
-                    ? '(Your stake will be split across selected options)'
+                    ? '(Your stake applies to each selected option)'
                     : '(You must get ALL selected options correct to win)'
                   }
                 </span>
@@ -138,8 +155,8 @@ export function VoteForm({ betId, options, minStake, maxStake, votingType, multi
               {votingType === 'multi' && (
                 <span className="text-xs text-muted-foreground block">
                   {multiVoteType === 'partial_match'
-                    ? 'Total stake - will be split across your selected options'
-                    : 'Total stake - you must get ALL selected options right to win'
+                    ? 'Stake per option - total stake will be multiplied by number of selected options'
+                    : 'Total stake - will be split across your selected options'
                   }
                 </span>
               )}
@@ -170,8 +187,8 @@ export function VoteForm({ betId, options, minStake, maxStake, votingType, multi
                 <span className="block mt-1">
                   {selectedOptions.length} option{selectedOptions.length !== 1 ? 's' : ''} selected - {
                     multiVoteType === 'partial_match'
-                      ? 'stake will be split equally between them'
-                      : 'you need ALL to be correct to win'
+                      ? `£${stake} per option = £${(stake * selectedOptions.length).toFixed(2)} total stake`
+                      : `£${stake} total, split as £${(stake / selectedOptions.length).toFixed(2)} per option`
                   }
                 </span>
               )}

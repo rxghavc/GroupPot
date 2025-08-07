@@ -1284,7 +1284,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                   <p className="text-sm text-blue-700">
                     {pendingSettleBet.multiVoteType === 'partial_match' ? (
                       <>
-                        <strong>Partial Match rule:</strong> Users who voted on the winning option will receive payouts based on their stake portion on that option. Stakes on non-winning options will be redistributed to winners.
+                        <strong>Partial Match rule:</strong> Users who voted on the winning option will receive payouts based on their stake on that option. Stakes on non-winning options will be redistributed to winners.
                       </>
                     ) : (
                       <>
