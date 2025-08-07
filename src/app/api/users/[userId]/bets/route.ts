@@ -139,7 +139,8 @@ export async function GET(
         if (result === 'won' && !isRefund) {
           // Get actual payout from the payouts API instead of recalculating
           try {
-            const payoutsResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/bets/${bet._id}/payouts`, {
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (req.headers.get('host') ? `https://${req.headers.get('host')}` : 'http://localhost:3000');
+            const payoutsResponse = await fetch(`${baseUrl}/api/bets/${bet._id}/payouts`, {
               headers: {
                 'Authorization': `Bearer ${token}`,
               },

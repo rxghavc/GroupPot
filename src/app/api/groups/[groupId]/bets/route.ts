@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import connectDB from '@/lib/db';
 import Bet from '@/models/Bet';
 import Group from '@/models/Group';
+import User from '@/models/User';
 import Vote from '@/models/Vote';
 import { verifyToken } from '@/lib/auth';
 

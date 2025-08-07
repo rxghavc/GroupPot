@@ -153,7 +153,7 @@ function BetsContent({ user, token }: { user: any; token: string }) {
 
   const activeBets = bets.filter((bet: UserBet) => bet.status !== "settled");
   const pastBets = bets.filter((bet: UserBet) => bet.status === "settled");
-  const uniqueGroups = [...new Set(bets.map(bet => bet.groupName))];
+  const uniqueGroups = [...new Set(bets.map(bet => bet.groupName).filter(name => name && name.trim() !== ""))];
 
   // Financial calculations
   const totalActiveStake = activeBets.reduce((sum, bet) => 
@@ -220,7 +220,7 @@ function BetsContent({ user, token }: { user: any; token: string }) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Groups</SelectItem>
-                {uniqueGroups.map(group => (
+                {uniqueGroups.filter(group => group && group.trim() !== "").map(group => (
                   <SelectItem key={group} value={group}>{group}</SelectItem>
                 ))}
               </SelectContent>

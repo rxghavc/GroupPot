@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import connectDB from '@/lib/db';
 import Group from '@/models/Group';
+import User from '@/models/User';
 import { verifyToken } from '@/lib/auth';
 
 // POST /api/groups/join - Join a group by code
