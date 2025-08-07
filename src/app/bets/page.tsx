@@ -208,14 +208,14 @@ function BetsContent({ user, token }: { user: any; token: string }) {
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-4">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
+        <div className="mb-8">
+          <div className="mb-4">
             <h1 className="text-3xl font-bold">My Betting Portfolio</h1>
             <p className="text-muted-foreground mt-1">Track your bets, analyze performance, and manage your stakes</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Select group" />
               </SelectTrigger>
               <SelectContent>
@@ -225,11 +225,12 @@ function BetsContent({ user, token }: { user: any; token: string }) {
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex bg-muted rounded-lg p-1">
+            <div className="flex bg-muted rounded-lg p-1 w-full sm:w-auto">
               <Button
                 variant={viewMode === "overview" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("overview")}
+                className="flex-1 sm:flex-none"
               >
                 Overview
               </Button>
@@ -237,6 +238,7 @@ function BetsContent({ user, token }: { user: any; token: string }) {
                 variant={viewMode === "history" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("history")}
+                className="flex-1 sm:flex-none"
               >
                 History
               </Button>
@@ -317,7 +319,7 @@ function BetsContent({ user, token }: { user: any; token: string }) {
               <CardContent>
                 <div className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
+                    <LineChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis 
                         dataKey="bet" 
@@ -347,12 +349,15 @@ function BetsContent({ user, token }: { user: any; token: string }) {
                           return null;
                         }}
                       />
-                      <Bar 
+                      <Line 
+                        type="monotone"
                         dataKey="profit" 
-                        fill="#3b82f6"
-                        radius={[4, 4, 0, 0]}
+                        stroke="#3b82f6"
+                        strokeWidth={3}
+                        dot={{ fill: "#3b82f6", strokeWidth: 2, r: 4 }}
+                        activeDot={{ r: 6, stroke: "#3b82f6", strokeWidth: 2 }}
                       />
-                    </BarChart>
+                    </LineChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
