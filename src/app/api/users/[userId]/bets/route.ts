@@ -42,131 +42,86 @@ export async function GET(
     const groups = await Group.find({ _id: { $in: groupIds } }).lean();
     const groupMap = new Map(groups.map((g: any) => [g._id.toString(), g.name]));
 
-    // For each bet, collect the user's votes
+    // For each bet, collect the user's votes and compute payout from payouts API for settled bets
     const betParticipation = await Promise.all(bets.map(async (bet: any) => {
-      const userVotes = votes.filter((v: any) => v.betId.toString() === bet._id.toString()).map((v: any) => ({
+      const thisUserVotes = votes.filter((v: any) => v.betId.toString() === bet._id.toString());
+
+      // Prepare userVotes with optionText and stake; result will be filled later if settled
+      let userVotes = thisUserVotes.map((v: any) => ({
         optionId: v.optionId.toString(),
         optionText: (bet.options.find((opt: any) => opt._id.toString() === v.optionId.toString())?.text) || '',
-        stake: v.stake
+        stake: v.stake as number,
+        result: 'pending' as 'pending' | 'won' | 'lost'
       }));
 
-      let result = 'pending';
+      let result: 'pending' | 'won' | 'lost' | 'refund' = 'pending';
       let payout = 0;
       let isRefund = false;
-      
+
       if (bet.status === 'settled') {
-        // Check if this is a refund scenario first
-        if (bet.votingType === 'multi') {
-          // For multi-vote, check if there are any winners at all
-          const winningOptionIndices = bet.winningOptions || [];
-          const winningOptionIds = winningOptionIndices.map((index: number) => 
-            bet.options[index]._id.toString()
-          ).sort();
-          
-          // Get all votes for this bet to check if anyone won
-          const allBetVotes = await Vote.find({ betId: bet._id }).lean();
-          const votesByUser = new Map();
-          allBetVotes.forEach((vote: any) => {
-            const userId = vote.userId.toString();
-            if (!votesByUser.has(userId)) {
-              votesByUser.set(userId, []);
-            }
-            votesByUser.get(userId).push(vote);
+        try {
+          // Always use the payouts API so frontend and backend use the same source of truth
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
+          const payoutsRes = await fetch(`${baseUrl}/api/bets/${bet._id}/payouts`, {
+            headers: { 'Authorization': `Bearer ${token}` },
           });
 
-          let hasAnyWinners = false;
-          votesByUser.forEach((userBetVotes: any) => {
-            const userOptionIds = userBetVotes.map((vote: any) => vote.optionId.toString()).sort();
-            
-            let isWinner = false;
-            if (bet.multiVoteType === 'exact_match') {
-              // Exact match: must vote on ALL winning options and ONLY those options
-              isWinner = userOptionIds.length === winningOptionIds.length && 
-                         userOptionIds.every((id: string) => winningOptionIds.includes(id));
-            } else {
-              // Partial match: win if voted on ANY of the winning options
-              isWinner = userOptionIds.some((id: string) => winningOptionIds.includes(id));
-            }
-            
-            if (isWinner) {
-              hasAnyWinners = true;
-            }
-          });
+          if (payoutsRes.ok) {
+            const payoutsData = await payoutsRes.json();
+            const payoutResult = payoutsData.result;
 
-          if (!hasAnyWinners) {
-            // No winners - refund scenario
-            isRefund = true;
-            result = 'refund';
-            payout = userVotes.reduce((sum: number, v: any) => sum + v.stake, 0);
-          } else {
-            // Normal multi-vote logic
-            const userOptionIds = userVotes.map((v: any) => v.optionId).sort();
-            
-            if (bet.multiVoteType === 'exact_match') {
-              // Exact match: must vote on ALL winning options and ONLY those options
-              const isWinner = userOptionIds.length === winningOptionIds.length && 
-                               userOptionIds.every((id: string) => winningOptionIds.includes(id));
-              result = isWinner ? 'won' : 'lost';
+            // Refund case
+            if (payoutResult.isRefund) {
+              isRefund = true;
+              result = 'refund';
+              payout = userVotes.reduce((sum, v) => sum + v.stake, 0);
+              // Mark all votes neutral (treat as won for coloring? Keep neutral)
+              userVotes = userVotes.map(v => ({ ...v, result: 'pending' }));
             } else {
-              // Partial match: win if voted on ANY winning options
-              const userWinningOptions = userVotes.filter((v: any) => 
-                winningOptionIds.includes(v.optionId)
-              );
-              result = userWinningOptions.length > 0 ? 'won' : 'lost';
-            }
-          }
-        } else {
-          // Single vote logic - check for refund first
-          const winningOptionIndex = bet.winningOption;
-          const winningOptionId = bet.options[winningOptionIndex]?._id?.toString();
-          
-          // Check if anyone voted on the winning option across ALL users in the bet
-          const allBetVotes = await Vote.find({ betId: bet._id }).lean();
-          const hasWinnersOnOption = allBetVotes.some((v: any) => v.optionId.toString() === winningOptionId);
-          
-          if (!hasWinnersOnOption) {
-            // No one voted on winning option - refund scenario
-            isRefund = true;
-            result = 'refund';
-            payout = userVotes.reduce((sum: number, v: any) => sum + v.stake, 0);
-          } else {
-            // Normal single vote logic - check if THIS USER voted on winning option
-            const hasWinningVote = userVotes.some((v: any) => v.optionId === winningOptionId);
-            result = hasWinningVote ? 'won' : 'lost';
-          }
-        }
-        
-        if (result === 'won' && !isRefund) {
-          // Get actual payout from the payouts API instead of recalculating
-          try {
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (req.headers.get('host') ? `https://${req.headers.get('host')}` : 'http://localhost:3000');
-            const payoutsResponse = await fetch(`${baseUrl}/api/bets/${bet._id}/payouts`, {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
-            });
-            
-            console.log(`Payouts API response status for bet ${bet._id}:`, payoutsResponse.status);
-            if (payoutsResponse.ok) {
-              const payoutsData = await payoutsResponse.json();
-              console.log(`Payouts data for bet ${bet._id}:`, JSON.stringify(payoutsData.result, null, 2));
-              const winner = payoutsData.result.winners.find((w: any) => w.userId === userId);
-              console.log(`Winner found for user ${userId}:`, winner);
+              // Winner lookup by userId
+              const winner = payoutResult.winners.find((w: any) => w.userId === userId);
               if (winner) {
+                result = 'won';
                 payout = winner.payout;
-                console.log(`Setting payout to: ${payout}`);
+              } else {
+                result = 'lost';
+                payout = 0;
               }
-            } else {
-              console.log(`Payouts API failed for bet ${bet._id}:`, await payoutsResponse.text());
+
+              // Per-vote result annotation
+              if (bet.votingType === 'single') {
+                const winningId = payoutResult.winningOptionId;
+                userVotes = userVotes.map(v => ({
+                  ...v,
+                  result: v.optionId === winningId ? 'won' : 'lost'
+                }));
+              } else {
+                const winningIds: string[] = payoutResult.winningOptionIds || [];
+                if (bet.multiVoteType === 'exact_match') {
+                  // In exact match, either all of the user's votes are winning (if they are a winner), or all are losing
+                  const voteRes = result === 'won' ? 'won' : 'lost';
+                  userVotes = userVotes.map(v => ({ ...v, result: voteRes }));
+                } else {
+                  // partial_match: mark only votes that are among winning options as won
+                  userVotes = userVotes.map(v => ({
+                    ...v,
+                    result: winningIds.includes(v.optionId) ? 'won' : 'lost'
+                  }));
+                }
+              }
             }
-          } catch (error) {
-            console.error('Error fetching payout data:', error);
-            // Fallback to 0 if we can't get the payout
+          } else {
+            // If payouts API fails, fall back to safe defaults (lost with 0 payout)
+            result = 'lost';
             payout = 0;
           }
+        } catch (err) {
+          // Network/other error
+          result = 'lost';
+          payout = 0;
         }
       }
-      
+
       return {
         betId: bet._id.toString(),
         title: bet.title,

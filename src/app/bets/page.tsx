@@ -479,29 +479,24 @@ function BetsContent({ user, token }: { user: any; token: string }) {
                         </div>
                         <div className="flex justify-between items-center text-sm font-medium">
                           <span>Net:</span>
-                          <span className={
-                            bet.result === "refund" 
-                              ? "text-blue-600" 
-                              : bet.result === "won" 
-                                ? "text-green-600" 
-                                : "text-red-600"
-                          }>
-                            {bet.result === "refund" 
-                              ? "±£0.00 (Refunded)"
-                              : bet.result === "won" 
-                                ? "+"
-                                : "-"
-                            }
-                            {bet.result !== "refund" && (
-                              <>
-                                £{
-                                  bet.result === "won" 
-                                    ? (parseFloat(bet.payout) - bet.userVotes.reduce((sum, v) => sum + v.stake, 0)).toFixed(2)
-                                    : bet.userVotes.reduce((sum, v) => sum + v.stake, 0).toFixed(2)
-                                }
-                              </>
-                            )}
-                          </span>
+                          {(() => {
+                            const stake = bet.userVotes.reduce((sum, v) => sum + v.stake, 0);
+                            const net = parseFloat(bet.payout) - stake;
+                            const cls = bet.result === "refund"
+                              ? "text-blue-600"
+                              : net > 0
+                                ? "text-green-600"
+                                : net < 0
+                                  ? "text-red-600"
+                                  : "text-gray-600";
+                            return (
+                              <span className={cls}>
+                                {bet.result === "refund"
+                                  ? "±£0.00 (Refunded)"
+                                  : `${net >= 0 ? "+" : "-"}£${Math.abs(net).toFixed(2)}`}
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
                       <div className="text-xs text-muted-foreground">

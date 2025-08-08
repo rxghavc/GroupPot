@@ -16,13 +16,13 @@ export function generateToken(payload: JWTPayload): string {
 
 export function verifyToken(token: string): JWTPayload | null {
   try {
-    console.log('JWT_SECRET length:', JWT_SECRET.length);
-    console.log('JWT_SECRET starts with:', JWT_SECRET.substring(0, 10));
-    const result = jwt.verify(token, JWT_SECRET) as JWTPayload;
-    console.log('Token verification successful for user:', result.userId);
+  // console.log('JWT_SECRET length:', JWT_SECRET.length);
+  // console.log('JWT_SECRET starts with:', JWT_SECRET.substring(0, 10));
+  const result = jwt.verify(token, JWT_SECRET) as JWTPayload;
+  // console.log('Token verification successful for user:', result.userId);
     return result;
   } catch (error) {
-    console.error('Token verification failed:', error);
+  // console.error('Token verification failed:', error);
     return null;
   }
 }
