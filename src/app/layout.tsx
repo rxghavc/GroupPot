@@ -33,6 +33,11 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "GroupPot Team" }],
   creator: "Sai Raghavan Commandur",
+  icons: {
+    icon: "/grouppot_logo.png",
+    shortcut: "/grouppot_logo.png",
+    apple: "/grouppot_logo.png",
+  },
 };
 
 export default function RootLayout({

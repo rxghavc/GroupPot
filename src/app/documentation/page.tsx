@@ -312,10 +312,7 @@ export default function DocumentationPage() {
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>
-                <span className="font-semibold">Email:</span> <a href="mailto:r.commandur@gmail.com" className="text-blue-700 underline">r.commandur@gmail.com</a>
-              </li>
-              <li>
-                <span className="font-semibold">LinkedIn:</span> <a href="https://www.linkedin.com/in/raghavcommandur/" target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">linkedin.com/in/raghavcommandur</a>
+                <span className="font-semibold">Email:</span> <a href="mailto:info.grouppot@gmail.com" className="text-blue-700 underline">info.grouppot@gmail.com</a>
               </li>
             </ul>
             <p className="text-muted-foreground text-sm">I'll do my best to respond quickly and address any issues or suggestions you have. Thanks for using GroupPot!</p>
