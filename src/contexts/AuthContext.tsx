@@ -30,14 +30,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check for existing token on app load
-    console.log('AuthContext: Checking for existing token...');
+  // console.log('AuthContext: Checking for existing token...');
     const savedToken = localStorage.getItem('authToken');
     if (savedToken) {
-      console.log('AuthContext: Found saved token, validating...');
+  // console.log('AuthContext: Found saved token, validating...');
       setToken(savedToken);
       fetchUserProfile(savedToken);
     } else {
-      console.log('AuthContext: No saved token found');
+  // console.log('AuthContext: No saved token found');
       setLoading(false);
     }
   }, []);
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       } else {
         // Token is invalid, clear it
-        console.log('Token validation failed, clearing auth state');
+  // console.log('Token validation failed, clearing auth state');
         localStorage.removeItem('authToken');
         setToken(null);
         setUser(null);

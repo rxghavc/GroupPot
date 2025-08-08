@@ -149,7 +149,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
           const resultPromises = settledBets.map(async (bet: Bet) => {
             try {
               // Debug token before API call
-              console.log(`Fetching payouts for bet ${bet.id}, token exists:`, !!token);
+              // console.log(`Fetching payouts for bet ${bet.id}, token exists:`, !!token);
               
               const resultResponse = await fetch(`/api/bets/${bet.id}/payouts`, {
                 headers: {
@@ -157,7 +157,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                 },
               });
               
-              console.log(`Payouts response for bet ${bet.id}:`, resultResponse.status);
+              // console.log(`Payouts response for bet ${bet.id}:`, resultResponse.status);
               
               if (resultResponse.ok) {
                 const resultData = await resultResponse.json();
@@ -499,8 +499,8 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   const calculateMemberProfit = async (memberId: string) => {
     try {
       // Debug token before API call
-      console.log('Token for calculateMemberProfit:', token ? 'exists' : 'missing');
-      console.log('User ID:', user?.id);
+  // console.log('Token for calculateMemberProfit:', token ? 'exists' : 'missing');
+  // console.log('User ID:', user?.id);
       
       const response = await fetch(`/api/users/${memberId}/bets`, {
         headers: {
@@ -508,7 +508,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
         },
       });
 
-      console.log('Member profit response status:', response.status);
+  // console.log('Member profit response status:', response.status);
       
       if (response.ok) {
         const userBets = await response.json();

@@ -12,21 +12,21 @@ export async function GET(
   try {
     // Get authorization header
     const authHeader = req.headers.get('authorization');
-    console.log('Groups API - Auth header received:', !!authHeader);
+  // console.log('Groups API - Auth header received:', !!authHeader);
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('Groups API - No valid auth header, returning 401');
+  // console.log('Groups API - No valid auth header, returning 401');
       return Response.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     const token = authHeader.substring(7);
-    console.log('Groups API - Token extracted, length:', token.length);
+  // console.log('Groups API - Token extracted, length:', token.length);
     
     const decoded = verifyToken(token);
-    console.log('Groups API - Token verification result:', !!decoded);
+  // console.log('Groups API - Token verification result:', !!decoded);
     
     if (!decoded) {
-      console.log('Groups API - Token verification failed, returning 401');
+  // console.log('Groups API - Token verification failed, returning 401');
       return Response.json({ error: 'Invalid token' }, { status: 401 });
     }
 
@@ -34,10 +34,10 @@ export async function GET(
     
     // Await params for Next.js 15 compatibility
     const { groupId } = await params;
-    console.log(`Fetching group ${groupId} for user ${decoded.userId}`);
+  // console.log(`Fetching group ${groupId} for user ${decoded.userId}`);
     
     const group = await Group.findById(groupId).populate('members', 'username email');
-    console.log(`Group found:`, !!group);
+  // console.log(`Group found:`, !!group);
     
     if (!group) {
       return Response.json({ error: 'Group not found' }, { status: 404 });
