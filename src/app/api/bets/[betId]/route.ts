@@ -11,35 +11,57 @@ export async function GET(
   { params }: { params: Promise<{ betId: string }> }
 ) {
   try {
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    const token = authHeader.substring(7);
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const { betId } = await params;
     await connectDB();
 
-    const bet = await Bet.findById(betId).populate('groupId');
+    const bet = await Bet.findById(betId);
     if (!bet) {
       return NextResponse.json({ error: 'Bet not found' }, { status: 404 });
     }
 
-    // Transform MongoDB document to frontend format
+    // Authorization: user must belong to bet's group
+    const group = await Group.findById(bet.groupId).select('members ownerId moderators');
+    if (!group) {
+      return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+    }
+    const isMember = group.members.some((m: any) => m.toString() === decoded.userId) ||
+      group.ownerId.toString() === decoded.userId ||
+      group.moderators.some((m: any) => m.toString() === decoded.userId);
+    if (!isMember) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // NOTE: Embedded option.votes are legacy/stale; kept for backward compatibility.
     const transformedBet = {
       id: bet._id.toString(),
       title: bet.title,
       description: bet.description,
-      votingType: bet.votingType || 'single', // Default to 'single' for existing bets
+      votingType: bet.votingType || 'single',
       options: bet.options.map((option: any) => ({
         id: option._id.toString(),
         text: option.text,
-        votes: option.votes.map((vote: any) => ({
+        votes: option.votes?.map((vote: any) => ({
           userId: vote.userId.toString(),
           username: vote.username,
           stake: vote.stake,
           timestamp: vote.timestamp
-        }))
+        })) || []
       })),
       deadline: bet.deadline,
       minStake: bet.minStake,
       maxStake: bet.maxStake,
       status: bet.status,
-      groupId: bet.groupId._id.toString(),
+      groupId: bet.groupId.toString(),
       createdAt: bet.createdAt,
       updatedAt: bet.updatedAt
     };

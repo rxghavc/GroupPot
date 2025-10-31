@@ -45,7 +45,8 @@ export async function GET(
         const optionVotes = betVotes.filter((v: any) => v.optionId.toString() === option._id.toString());
         return {
           ...option,
-          id: `${bet._id}-option-${index + 1}`,
+          id: option._id.toString(), // Use real MongoDB ID for consistency
+          _id: option._id,
           votesCount: optionVotes.length,
           totalStake: optionVotes.reduce((sum: number, v: any) => sum + v.stake, 0),
           votes: optionVotes // Optionally include all votes for this option
