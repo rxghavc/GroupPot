@@ -208,21 +208,20 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
     // Load profit data for all members
     if (group) {
       setLoadingProfits(true);
-      const profitPromises = group.members.map(async (member: any) => {
-        const memberId = member._id || member.id;
-        const profitData = await calculateMemberProfit(memberId);
-        return { memberId, profitData };
-      });
-      
       try {
-        const results = await Promise.all(profitPromises);
-        const profitMap = new Map();
-        results.forEach(({ memberId, profitData }) => {
-          profitMap.set(memberId, profitData);
-        });
-        setMemberProfits(profitMap);
-      } catch (error) {
-        console.error('Error loading member profits:', error);
+        const res = await fetch(`/api/groups/${group.id}/members/profits`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+            const profitMap = new Map();
+          Object.entries<any>(data.profits || {}).forEach(([memberId, stats]) => {
+            profitMap.set(memberId, stats);
+          });
+          setMemberProfits(profitMap);
+        } else {
+          console.error('Failed to load aggregated profits', await res.text());
+        }
+      } catch (err) {
+        console.error('Error loading aggregated profits:', err);
       } finally {
         setLoadingProfits(false);
       }
@@ -496,58 +495,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   };
 
   // Calculate member profit/loss for this group
-  const calculateMemberProfit = async (memberId: string) => {
-    try {
-      // Debug token before API call
-  // console.log('Token for calculateMemberProfit:', token ? 'exists' : 'missing');
-  // console.log('User ID:', user?.id);
-      
-      const response = await fetch(`/api/users/${memberId}/bets`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-  // console.log('Member profit response status:', response.status);
-      
-      if (response.ok) {
-        const userBets = await response.json();
-        
-        // Filter bets for this specific group
-        const groupBets = userBets.filter((bet: any) => bet.groupId === groupId);
-        
-        // Calculate profit/loss using the accurate API data
-        const totalStakes = groupBets.reduce((sum: number, bet: any) => 
-          sum + bet.userVotes.reduce((voteSum: number, vote: any) => voteSum + vote.stake, 0), 0
-        );
-        
-        const totalPayouts = groupBets.reduce((sum: number, bet: any) => {
-          // Only count payouts for settled bets, using the calculated payout from API
-          return sum + (bet.status === 'settled' ? parseFloat(bet.payout) : 0);
-        }, 0);
-        
-        const netProfit = totalPayouts - totalStakes;
-        
-        return {
-          totalStakes,
-          totalPayouts,
-          netProfit,
-          totalBets: groupBets.length,
-          settledBets: groupBets.filter((bet: any) => bet.status === 'settled').length
-        };
-      }
-    } catch (error) {
-      console.error('Error calculating member profit:', error);
-    }
-    
-    return {
-      totalStakes: 0,
-      totalPayouts: 0,
-      netProfit: 0,
-      totalBets: 0,
-      settledBets: 0
-    };
-  };
+  // calculateMemberProfit no longer used (aggregated endpoint replaces per-member calls)
 
   // Handle member removal
   const handleRemoveMember = async (memberId: string) => {

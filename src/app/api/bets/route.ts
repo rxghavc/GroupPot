@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       votingType: bet.votingType || 'single', // Default to 'single' for existing bets
       options: bet.options.map((option: any, index: number) => ({
         ...option.toObject(),
-        id: `${bet._id}-option-${index + 1}`,
+        id: option._id.toString(), // Use real MongoDB ID
         _id: option._id,
         votes: option.votes.map((vote: any) => ({
           userId: vote.userId.toString(),
@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
       _id: bet._id,
       options: bet.options.map((option: any, index: number) => ({
         ...option.toObject(),
-        id: `${bet._id}-option-${index + 1}`,
+        id: option._id.toString(), // Use real MongoDB ID
         _id: option._id
       }))
     };

@@ -5,6 +5,7 @@ import Bet from '@/models/Bet';
 import Group from '@/models/Group';
 import Vote from '@/models/Vote';
 import { verifyToken } from '@/lib/auth';
+import { calculateBetPayout } from '@/lib/payouts';
 
 // GET /api/users/:userId/bets - Get bets user has participated in
 export async function GET(
@@ -31,20 +32,23 @@ export async function GET(
       return Response.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Find all votes by this user
-    const votes = await Vote.find({ userId }).lean();
-    if (votes.length === 0) return Response.json([]);
+  // Find all votes by this user
+  const userVotesAll = await Vote.find({ userId }).lean();
+  if (userVotesAll.length === 0) return Response.json([]);
 
-    // Group votes by betId
-    const betIds = [...new Set(votes.map((v: any) => v.betId.toString()))];
-    const bets = await Bet.find({ _id: { $in: betIds } }).lean();
+  // Group votes by betId (user participation)
+  const betIds = [...new Set(userVotesAll.map((v: any) => v.betId.toString()))];
+  const bets = await Bet.find({ _id: { $in: betIds } }).lean();
+
+  // Fetch ALL votes for these bets (needed for accurate payout distribution)
+  const allVotesForBets = await Vote.find({ betId: { $in: betIds } }).lean();
     const groupIds = [...new Set(bets.map((b: any) => b.groupId.toString()))];
     const groups = await Group.find({ _id: { $in: groupIds } }).lean();
     const groupMap = new Map(groups.map((g: any) => [g._id.toString(), g.name]));
 
     // For each bet, collect the user's votes and compute payout from payouts API for settled bets
     const betParticipation = await Promise.all(bets.map(async (bet: any) => {
-      const thisUserVotes = votes.filter((v: any) => v.betId.toString() === bet._id.toString());
+  const thisUserVotes = userVotesAll.filter((v: any) => v.betId.toString() === bet._id.toString());
 
       // Prepare userVotes with optionText and stake; result will be filled later if settled
       let userVotes = thisUserVotes.map((v: any) => ({
@@ -60,64 +64,38 @@ export async function GET(
 
       if (bet.status === 'settled') {
         try {
-          // Always use the payouts API so frontend and backend use the same source of truth
-          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
-          const payoutsRes = await fetch(`${baseUrl}/api/bets/${bet._id}/payouts`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-          });
-
-          if (payoutsRes.ok) {
-            const payoutsData = await payoutsRes.json();
-            const payoutResult = payoutsData.result;
-
-            // Refund case
-            if (payoutResult.isRefund) {
-              isRefund = true;
-              result = 'refund';
-              payout = userVotes.reduce((sum, v) => sum + v.stake, 0);
-              // Mark all votes neutral (treat as won for coloring? Keep neutral)
-              userVotes = userVotes.map(v => ({ ...v, result: 'pending' }));
+          const votesForBet = allVotesForBets.filter((v: any) => v.betId.toString() === bet._id.toString());
+          const payoutResult = calculateBetPayout(bet, votesForBet);
+          if (payoutResult.isRefund) {
+            isRefund = true;
+            result = 'refund';
+            payout = userVotes.reduce((sum, v) => sum + v.stake, 0);
+            userVotes = userVotes.map(v => ({ ...v, result: 'pending' }));
+          } else {
+            const winner = payoutResult.winners.find((w: any) => w.userId === userId);
+            if (winner) {
+              result = 'won';
+              payout = winner.payout;
             } else {
-              // Winner lookup by userId
-              const winner = payoutResult.winners.find((w: any) => w.userId === userId);
-              if (winner) {
-                result = 'won';
-                payout = winner.payout;
+              result = 'lost';
+              payout = 0;
+            }
+            if (bet.votingType === 'single') {
+              const winningId = payoutResult.winningOptionId;
+              userVotes = userVotes.map(v => ({ ...v, result: v.optionId === winningId ? 'won' : 'lost' }));
+            } else {
+              const winningIds: string[] = payoutResult.winningOptionIds || [];
+              if (bet.multiVoteType === 'exact_match') {
+                const voteRes = result === 'won' ? 'won' : 'lost';
+                userVotes = userVotes.map(v => ({ ...v, result: voteRes }));
               } else {
-                result = 'lost';
-                payout = 0;
-              }
-
-              // Per-vote result annotation
-              if (bet.votingType === 'single') {
-                const winningId = payoutResult.winningOptionId;
-                userVotes = userVotes.map(v => ({
-                  ...v,
-                  result: v.optionId === winningId ? 'won' : 'lost'
-                }));
-              } else {
-                const winningIds: string[] = payoutResult.winningOptionIds || [];
-                if (bet.multiVoteType === 'exact_match') {
-                  // In exact match, either all of the user's votes are winning (if they are a winner), or all are losing
-                  const voteRes = result === 'won' ? 'won' : 'lost';
-                  userVotes = userVotes.map(v => ({ ...v, result: voteRes }));
-                } else {
-                  // partial_match: mark only votes that are among winning options as won
-                  userVotes = userVotes.map(v => ({
-                    ...v,
-                    result: winningIds.includes(v.optionId) ? 'won' : 'lost'
-                  }));
-                }
+                userVotes = userVotes.map(v => ({ ...v, result: winningIds.includes(v.optionId) ? 'won' : 'lost' }));
               }
             }
-          } else {
-            // If payouts API fails, fall back to safe defaults (lost with 0 payout)
-            result = 'lost';
-            payout = 0;
           }
         } catch (err) {
-          // Network/other error
-          result = 'lost';
+          console.error('Local payout calculation failed', { betId: bet._id.toString(), err });
+          result = 'pending';
           payout = 0;
         }
       }
