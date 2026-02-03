@@ -32,6 +32,9 @@ export async function GET(
 
     await connectDB();
     
+    // Ensure User schema is registered
+    User;
+    
     // Await params for Next.js 15 compatibility
     const { groupId } = await params;
   // console.log(`Fetching group ${groupId} for user ${decoded.userId}`);
