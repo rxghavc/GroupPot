@@ -39,12 +39,16 @@ export async function GET(
     const { groupId } = await params;
   // console.log(`Fetching group ${groupId} for user ${decoded.userId}`);
     
-    const group = await Group.findById(groupId).populate('members', 'username email');
+    const groupResult = await Group.findById(groupId)
+      .populate('members', 'username email')
+      .lean();
   // console.log(`Group found:`, !!group);
     
-    if (!group) {
+    if (!groupResult || Array.isArray(groupResult)) {
       return Response.json({ error: 'Group not found' }, { status: 404 });
     }
+
+    const group: any = groupResult;
 
     // Check if user is a member of this group
     if (!group.members.some((member: any) => member._id.toString() === decoded.userId)) {
@@ -53,7 +57,7 @@ export async function GET(
 
     // Transform MongoDB _id to id for frontend compatibility
     const transformedGroup = {
-      ...group.toObject(),
+      ...group,
       id: group._id.toString(),
       _id: group._id
     };

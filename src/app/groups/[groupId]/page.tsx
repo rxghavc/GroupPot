@@ -3,7 +3,7 @@
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, Users, PoundSterling, Eye, Copy, Check, Trophy, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Files } from "lucide-react";
 import { Group, Bet, BetResult } from "@/lib/types";
 import { BetCard } from "@/components/ui/BetCard";
@@ -67,6 +67,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   const [memberProfits, setMemberProfits] = useState<Map<string, any>>(new Map());
   const [loadingProfits, setLoadingProfits] = useState(false);
   const [cloneBetData, setCloneBetData] = useState<any>(null);
+  const isFetchingRef = useRef(false);
 
   // Auto-refresh functionality
   const {
@@ -77,6 +78,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
     pauseAutoRefresh,
     resetUserActivity
   } = useAutoRefresh({
+    interval: 60000,
     enabled: !authLoading && !!user && !!token && !!groupId,
     onRefresh: fetchGroupData
   });
@@ -85,12 +87,8 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
     // Await params for Next.js 15 compatibility
     params.then(({ groupId: id }) => {
       setGroupId(id);
-      // Trigger fetch immediately if auth is ready
-      if (!authLoading && user && token) {
-        fetchGroupData();
-      }
     });
-  }, [params, authLoading, user, token]);
+  }, [params]);
 
   // Fallback fetch if the above didn't trigger
   useEffect(() => {
@@ -102,8 +100,10 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   }, [groupId, user, token, authLoading, group]);
 
   async function fetchGroupData() {
-    if (!groupId) return;
+    if (!groupId || !token) return;
+    if (isFetchingRef.current) return;
     
+    isFetchingRef.current = true;
     setIsFetching(true);
     try {
       // Fetch group details and bets in parallel
@@ -145,20 +145,16 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
         
         // Fetch results for settled bets in parallel
         const settledBets = betsData.bets.filter((bet: Bet) => bet.status === 'settled');
-        if (settledBets.length > 0) {
-          const resultPromises = settledBets.map(async (bet: Bet) => {
+        const betsNeedingResults = settledBets.filter((bet: Bet) => !results.has(bet.id));
+        if (betsNeedingResults.length > 0) {
+          const resultPromises = betsNeedingResults.map(async (bet: Bet) => {
             try {
-              // Debug token before API call
-              // console.log(`Fetching payouts for bet ${bet.id}, token exists:`, !!token);
-              
               const resultResponse = await fetch(`/api/bets/${bet.id}/payouts`, {
                 headers: {
                   'Authorization': `Bearer ${token}`,
                 },
               });
-              
-              // console.log(`Payouts response for bet ${bet.id}:`, resultResponse.status);
-              
+
               if (resultResponse.ok) {
                 const resultData = await resultResponse.json();
                 return { betId: bet.id, result: resultData.result };
@@ -171,14 +167,16 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
             return null;
           });
 
-          const results = await Promise.all(resultPromises);
-          const newResults = new Map();
-          results.forEach((item) => {
+          const newResults = await Promise.all(resultPromises);
+          setResults((prev) => {
+            const mergedResults = new Map(prev);
+            newResults.forEach((item) => {
             if (item) {
-              newResults.set(item.betId, item.result);
+                mergedResults.set(item.betId, item.result);
             }
+            });
+            return mergedResults;
           });
-          setResults(newResults);
         }
       }
     } catch (error) {
@@ -186,6 +184,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
     } finally {
       setLoading(false);
       setIsFetching(false);
+      isFetchingRef.current = false;
     }
   }
 

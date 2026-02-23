@@ -26,23 +26,41 @@ export async function GET(
 
     await connectDB();
     const { groupId } = await params;
-    const group = await Group.findById(groupId);
-    if (!group) {
+    const groupResult = await Group.findById(groupId).select('members').lean();
+    if (!groupResult || Array.isArray(groupResult)) {
       return Response.json({ error: 'Group not found' }, { status: 404 });
     }
+    const group: any = groupResult;
     if (!group.members.some((memberId: any) => memberId.toString() === decoded.userId)) {
       return Response.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const bets = await Bet.find({ groupId }).lean();
+    if (bets.length === 0) {
+      return Response.json({ bets: [] });
+    }
+
     const betIds = bets.map((bet: any) => bet._id);
-    const votes = await Vote.find({ betId: { $in: betIds } }).lean();
+    const votes = await Vote.find({ betId: { $in: betIds } })
+      .select('betId optionId userId username stake')
+      .lean();
+
+    const votesByBetAndOption = new Map<string, any[]>();
+    for (const vote of votes) {
+      const mapKey = `${vote.betId.toString()}:${vote.optionId.toString()}`;
+      const existing = votesByBetAndOption.get(mapKey);
+      if (existing) {
+        existing.push(vote);
+      } else {
+        votesByBetAndOption.set(mapKey, [vote]);
+      }
+    }
 
     // Attach vote counts and total stakes to each option
     const transformedBets = bets.map((bet: any) => {
-      const betVotes = votes.filter((v: any) => v.betId.toString() === bet._id.toString());
       const options = bet.options.map((option: any, index: number) => {
-        const optionVotes = betVotes.filter((v: any) => v.optionId.toString() === option._id.toString());
+        const mapKey = `${bet._id.toString()}:${option._id.toString()}`;
+        const optionVotes = votesByBetAndOption.get(mapKey) ?? [];
         return {
           ...option,
           id: option._id.toString(), // Use real MongoDB ID for consistency

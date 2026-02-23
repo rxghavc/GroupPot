@@ -28,18 +28,24 @@ export async function GET(
     // Await params for Next.js 15 compatibility
     const { betId } = await params;
 
-    const bet = await Bet.findById(betId);
+    const betResult = await Bet.findById(betId)
+      .select('status votingType multiVoteType winningOption winningOptions options')
+      .lean();
     
-    if (!bet) {
+    if (!betResult || Array.isArray(betResult)) {
       return Response.json({ error: 'Bet not found' }, { status: 404 });
     }
+
+    const bet: any = betResult;
 
     if (bet.status !== 'settled') {
       return Response.json({ error: 'Bet has not been settled yet' }, { status: 400 });
     }
 
     // Fetch all votes for this bet from the Vote collection
-    const allVotes = await Vote.find({ betId: bet._id });
+    const allVotes = await Vote.find({ betId: bet._id })
+      .select('userId optionId stake username')
+      .lean();
 
   const result = calculateBetPayout(bet, allVotes);
   return Response.json({ result });

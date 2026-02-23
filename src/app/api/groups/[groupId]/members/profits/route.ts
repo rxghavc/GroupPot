@@ -38,16 +38,23 @@ export async function GET(
     const betIds = bets.map((b: any) => b._id);
     const votes = await Vote.find({ betId: { $in: betIds } }).lean();
 
-    // Pre-group votes by user for stakes tally
-    const userStakeMap = new Map<string, number>();
-    const userVotesByBet = new Map<string, Map<string, number>>(); // userId -> (betId -> stakeSumForBet)
+    const votesByBetId = new Map<string, any[]>();
+    const stakeByBetAndUser = new Map<string, Map<string, number>>();
 
     votes.forEach((v: any) => {
+      const betIdStr = v.betId.toString();
       const uid = v.userId.toString();
-      userStakeMap.set(uid, (userStakeMap.get(uid) || 0) + v.stake);
-      if (!userVotesByBet.has(uid)) userVotesByBet.set(uid, new Map());
-      const perBet = userVotesByBet.get(uid)!;
-      perBet.set(v.betId.toString(), (perBet.get(v.betId.toString()) || 0) + v.stake);
+
+      if (!votesByBetId.has(betIdStr)) {
+        votesByBetId.set(betIdStr, []);
+      }
+      votesByBetId.get(betIdStr)!.push(v);
+
+      if (!stakeByBetAndUser.has(betIdStr)) {
+        stakeByBetAndUser.set(betIdStr, new Map());
+      }
+      const perUserStake = stakeByBetAndUser.get(betIdStr)!;
+      perUserStake.set(uid, (perUserStake.get(uid) || 0) + v.stake);
     });
 
     // Initialize stats per user
@@ -60,10 +67,10 @@ export async function GET(
     // Process each bet once
     for (const bet of bets) {
       const betIdStr = (bet._id as any).toString();
-      const betVotes = votes.filter((v: any) => v.betId.toString() === betIdStr);
+      const betVotes = votesByBetId.get(betIdStr) || [];
       if (betVotes.length === 0) continue;
-      // Users who participated in this bet
-      const participants = new Set(betVotes.map(v => v.userId.toString()));
+      const perUserStake = stakeByBetAndUser.get(betIdStr) || new Map<string, number>();
+      const participants = new Set(perUserStake.keys());
       participants.forEach(uid => {
         if (!stats[uid]) return; // skip non-members just in case
         stats[uid].totalBets += 1;
@@ -76,7 +83,7 @@ export async function GET(
             if (!stats[uid]) return;
             stats[uid].settledBets += 1;
             // Total stake user placed on this bet
-    const userStakeForBet = betVotes.filter((v: any) => v.userId.toString() === uid).reduce((s: number, v: any) => s + v.stake, 0);
+            const userStakeForBet = perUserStake.get(uid) || 0;
             stats[uid].totalStakes += userStakeForBet;
             if (payoutResult.isRefund) {
               stats[uid].totalPayouts += userStakeForBet; // refunded
@@ -95,7 +102,7 @@ export async function GET(
         participants.forEach(uid => {
           if (!stats[uid]) return;
           stats[uid].pendingBets += 1;
-      const userStakeForBet = betVotes.filter((v: any) => v.userId.toString() === uid).reduce((s: number, v: any) => s + v.stake, 0);
+          const userStakeForBet = perUserStake.get(uid) || 0;
           stats[uid].totalStakes += userStakeForBet; // stakes committed
         });
       }
