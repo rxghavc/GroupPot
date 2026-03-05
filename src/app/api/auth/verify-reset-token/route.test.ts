@@ -58,9 +58,9 @@ describe('POST /api/auth/verify-reset-token', () => {
 
   it('returns user info for valid token', async () => {
     const mockUser = {
-      email: 'alice@example.com',
-      username: 'alice',
-      password: 'should-not-leak',
+      email: 'member@example.com',
+      username: 'member-user',
+      internalSecretField: 'redacted-test-only',
     };
     mockedFindOne.mockResolvedValue(mockUser);
 
@@ -74,9 +74,9 @@ describe('POST /api/auth/verify-reset-token', () => {
 
     expect(response.status).toBe(200);
     expect(data).toEqual({
-      email: 'alice@example.com',
-      username: 'alice',
+      email: 'member@example.com',
+      username: 'member-user',
     });
-    expect((data as any).password).toBeUndefined();
+    expect((data as any).internalSecretField).toBeUndefined();
   });
 });
