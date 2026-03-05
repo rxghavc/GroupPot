@@ -93,6 +93,41 @@ A sophisticated group betting platform built with Next.js that enables friends a
 5. **Access the application**
    Open [http://localhost:3000](http://localhost:3000) in your browser
 
+## ✅ Testing
+
+I've now included a Jest test setup for fast automated validation without manually testing in localhost every time.
+
+- **Run all tests**
+   ```bash
+   npm test
+   ```
+- **Run minimal smoke suite (fast)**
+   ```bash
+   npm run test:smoke
+   ```
+- **Watch mode**
+   ```bash
+   npm run test:watch
+   ```
+- **Coverage report**
+   ```bash
+   npm run test:coverage
+   ```
+
+Current baseline includes:
+- Unit tests for auth and payout logic in `src/lib`
+- Integration-style API route tests for `POST /api/auth/login` and `POST /api/auth/signup`
+
+### Test DB Guardrail
+
+To prevent accidental writes/reads against production data during test runs, `connectDB()` now blocks test-time connections when `MONGODB_URI` looks like a production/remote cluster URI.
+
+- If my test run fails with an unsafe DB URI error, I need to use a local/test MongoDB URI.
+- Override intentionally only when needed:
+   ```bash
+   ALLOW_PROD_DB_IN_TESTS=true npm test
+   ```
+
 ## 📊 Key Architecture Decisions
 
 ### Database Design
