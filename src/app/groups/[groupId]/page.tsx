@@ -4,7 +4,7 @@ import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
-import { Plus, Users, PoundSterling, Eye, Copy, Check, Trophy, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Files } from "lucide-react";
+import { Plus, Users, PoundSterling, Eye, Copy, Check, Trophy, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Files, ListChecks, XCircle, Gavel, CopyPlus, Trash2 } from "lucide-react";
 import { Group, Bet, BetResult } from "@/lib/types";
 import { BetCard } from "@/components/ui/BetCard";
 import { BetForm } from "@/components/ui/BetForm";
@@ -36,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import useSWR, { mutate } from 'swr';
 
 export default function GroupDetailsPage({ params }: { params: Promise<{ groupId: string }> }) {
@@ -59,6 +60,8 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
   const [isFetching, setIsFetching] = useState(false);
   const [showResultsDialog, setShowResultsDialog] = useState(false);
   const [selectedBetResult, setSelectedBetResult] = useState<{ bet: Bet; result: BetResult } | null>(null);
+  const [showVotesDialog, setShowVotesDialog] = useState(false);
+  const [selectedVotesBet, setSelectedVotesBet] = useState<Bet | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
@@ -477,12 +480,36 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
     }
   };
 
+  // Handle viewing per-member votes for unsettled bets
+  const handleViewVotes = (bet: Bet) => {
+    setSelectedVotesBet(bet);
+    setShowVotesDialog(true);
+  };
+
+  const selectedVotesByOption = (() => {
+    if (!selectedVotesBet) return [] as Array<{ optionId: string; optionText: string; voters: { userId: string; username: string; stake: number }[]; totalStake: number }>;
+
+    return selectedVotesBet.options.map((option) => ({
+      optionId: option.id,
+      optionText: option.text,
+      voters: (option.votes || []).map((vote) => ({
+        userId: vote.userId,
+        username: vote.username,
+        stake: vote.stake,
+      })),
+      totalStake: (option.votes || []).reduce((sum, vote) => sum + vote.stake, 0),
+    }));
+  })();
+
   // Pagination helpers
-  const totalBets = bets.length;
+  const sortedBets = [...bets].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  const totalBets = sortedBets.length;
   const totalPages = Math.ceil(totalBets / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
-  const currentBets = bets.slice(startIndex, endIndex);
+  const currentBets = sortedBets.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -1072,7 +1099,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                         <th className="text-left py-2 font-medium">Title</th>
                         <th className="text-left py-2 font-medium">Status</th>
                         <th className="text-left py-2 font-medium">Deadline</th>
-                        <th className="text-left py-2 font-medium">Total Votes</th>
+                        <th className="text-center py-2 font-medium">Total Votes</th>
                         <th className="text-left py-2 font-medium">Total Pool</th>
                         <th className="text-left py-2 font-medium">Actions</th>
                       </tr>
@@ -1113,7 +1140,7 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                             <td className="py-2 text-sm">
                               {new Date(bet.deadline).toLocaleDateString('en-GB')}
                             </td>
-                            <td className="py-2 text-sm">{totalVotes}</td>
+                            <td className="py-2 text-sm text-center">{totalVotes}</td>
                             <td className="py-2 text-sm">£{totalPool.toFixed(2)}</td>
                             <td className="py-2">
                               <div className="flex items-center gap-2 flex-wrap">
@@ -1126,44 +1153,85 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
                                     View Results
                                   </Button>
                                 )}
+                                {bet.status !== 'settled' && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleViewVotes(bet)}
+                                        className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
+                                      >
+                                        <ListChecks className="h-4 w-4 sm:mr-1" />
+                                        <span className="hidden sm:inline">Votes</span>
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">View member votes</TooltipContent>
+                                  </Tooltip>
+                                )}
                                 {isModerator && canSettle && bet.status !== 'settled' && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => handleSettleConfirm(bet)}
-                                  >
-                                    Settle
-                                  </Button>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => handleSettleConfirm(bet)}
+                                        className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
+                                      >
+                                        <Gavel className="h-4 w-4 sm:mr-1" />
+                                        <span className="hidden sm:inline">Settle</span>
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">Settle bet</TooltipContent>
+                                  </Tooltip>
                                 )}
                                 {isModerator && bet.status === 'open' && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => handleForceCloseBet(bet.id)}
-                                    className="text-orange-600 hover:text-orange-700"
-                                  >
-                                    Close Early
-                                  </Button>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => handleForceCloseBet(bet.id)}
+                                        className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 sm:h-9 sm:w-auto sm:px-3"
+                                      >
+                                        <XCircle className="h-4 w-4 sm:mr-1" />
+                                        <span className="hidden sm:inline">Close Early</span>
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">Close early</TooltipContent>
+                                  </Tooltip>
                                 )}
                                 {isModerator && (
                                   <>
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm"
-                                      onClick={() => handleCloneBet(bet)}
-                                      className="text-blue-600 hover:text-blue-700"
-                                      title="Clone this bet"
-                                    >
-                                      <Files className="w-3 h-3 mr-1" />
-                                      Clone
-                                    </Button>
-                                    <Button 
-                                      variant="destructive" 
-                                      size="sm"
-                                      onClick={() => handleDeleteBet(bet.id)}
-                                    >
-                                      Delete
-                                    </Button>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm"
+                                          onClick={() => handleCloneBet(bet)}
+                                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 sm:h-9 sm:w-auto sm:px-3"
+                                          title="Clone this bet"
+                                        >
+                                          <CopyPlus className="h-4 w-4 sm:mr-1" />
+                                          <span className="hidden sm:inline">Clone</span>
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">Clone bet</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button 
+                                          variant="destructive" 
+                                          size="sm"
+                                          onClick={() => handleDeleteBet(bet.id)}
+                                          className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
+                                        >
+                                          <Trash2 className="h-4 w-4 sm:mr-1" />
+                                          <span className="hidden sm:inline">Delete</span>
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">Delete bet</TooltipContent>
+                                    </Tooltip>
                                   </>
                                 )}
                               </div>
@@ -1253,6 +1321,65 @@ export default function GroupDetailsPage({ params }: { params: Promise<{ groupId
               />
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Member Votes Dialog */}
+      <Dialog open={showVotesDialog} onOpenChange={setShowVotesDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-0 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl sm:text-2xl font-bold tracking-tight">
+              Votes by Option
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              {selectedVotesBet?.title}
+            </p>
+          </DialogHeader>
+          <Card className="border-0 bg-gradient-to-b from-muted/40 to-background">
+            <CardContent className="pt-5">
+              {selectedVotesByOption.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No votes have been placed on this bet yet.</p>
+              ) : (
+                <div className="space-y-4">
+                  {selectedVotesByOption.map((row) => (
+                    <div
+                      key={row.optionId}
+                      className="rounded-xl border bg-card shadow-sm p-4 sm:p-5 transition-colors hover:bg-muted/20"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-base sm:text-lg font-semibold">{row.optionText}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-800 px-2.5 py-1 text-xs font-medium">
+                            {row.voters.length} voter{row.voters.length !== 1 ? 's' : ''}
+                          </span>
+                          <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-1 text-xs font-medium">
+                            £{row.totalStake.toFixed(2)} staked
+                          </span>
+                        </div>
+                      </div>
+                      {row.voters.length === 0 ? (
+                        <div className="mt-3 rounded-md border border-dashed bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                          None
+                        </div>
+                      ) : (
+                        <div className="mt-3 space-y-2">
+                          {row.voters.map((vote, index) => (
+                            <div
+                              key={`${row.optionId}-${vote.userId}-${index}`}
+                              className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm"
+                            >
+                              <span className="font-medium">{vote.username}</span>
+                              <span className="text-muted-foreground">£{vote.stake.toFixed(2)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </DialogContent>
       </Dialog>
 
